@@ -6,57 +6,40 @@ from operator import itemgetter
 import math
 import collections
 from pprint import pprint
+import itertools
 
 
-def _count(t, e, f, es, fs, keys=[]):
-    if keys:
-        _fs = [_f for (_e, _f) in keys if _e == e]
-    else:
-        _fs = fs
-    sm = sum(t[(e, _f)] for _f in _fs)
-    # for zero division
-    if sm == 0:
-        return 0
-    else:
-        return t[(e, f)] * es.count(e) * fs.count(f) / \
-            sum(t[(e, _f)] for _f in _fs)
-
-
-def _total(t, e, f, corpus, loop_count=1000):
-    return sum(_count(t, e, f, es, fs) for (es, fs) in corpus)
+def _constant_factory(value):
+    '''define a local function for equal probability initialization'''
+    return itertools.repeat(value).next
 
 
 def _train(corpus, loop_count=1000):
-    t = collections.defaultdict(float)
-    keys = set()
-    e_keys = set()
     f_keys = set()
     for (es, fs) in corpus:
         for f in fs:
-            for e in es:
-                keys.add((e, f))
-    for (es, fs) in corpus:
-        for (e, f) in (es, fs):
-            e_keys.add(e)
             f_keys.add(f)
-    # initialize the t-table
-    for (e, f) in keys:
-        t[(e, f)] = 1 / len(f_keys)
+    # default value provided as equal probability)
+    t = collections.defaultdict(_constant_factory(1/len(f_keys)))
+
     # loop
     for i in xrange(loop_count):
         count = collections.defaultdict(float)
         total = collections.defaultdict(float)
-        for (e, f) in keys:
-            for (es, fs) in corpus:
-                c = _count(t, e, f, es, fs)
-                count[(e, f)] += c
-                total[f] += c
-        for (e, f) in keys:
+        s_total = collections.defaultdict(float)
+        for (es, fs) in corpus:
+            # compute normalization
+            for e in es:
+                s_total[e] = 0
+                for f in fs:
+                    s_total[e] += t[(e, f)]
+            for e in es:
+                for f in fs:
+                    count[(e, f)] += t[(e, f)] / s_total[e]
+                    total[f] += t[(e, f)] / s_total[e]
+        # estimate probability
+        for (e, f) in count.keys():
             t[(e, f)] = count[(e, f)] / total[f]
-    # remove zero keys
-    for (k, v) in t.items():
-        if v == 0:
-            del t[k]
     return t
 
 
@@ -87,14 +70,12 @@ if __name__ == '__main__':
                   ("the book", "das Buch"),
                   ("a book", "ein Buch"),
                   ]
+    #sent_pairs = [("day", "1 2")]
     t = train(sent_pairs, loop_count=0)
     pprint(t)
-    print()
     t = train(sent_pairs, loop_count=1)
     pprint(t)
-    print()
     t = train(sent_pairs, loop_count=2)
-    pprint(t.items())
-    print()
+    pprint(t)
     t = train(sent_pairs, loop_count=3)
     pprint(t)

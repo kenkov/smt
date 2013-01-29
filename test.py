@@ -70,20 +70,20 @@ class IBMModel1Test(unittest.TestCase):
                       ("the book", "das Buch"),
                       ("a book", "ein Buch"),
                       ]
-        t0 = train(sent_pairs, loop_count=0)
+        #t0 = train(sent_pairs, loop_count=0)
         t1 = train(sent_pairs, loop_count=1)
         t2 = train(sent_pairs, loop_count=2)
 
-        loop0 = [(('house', 'Haus'), 0.25),
-                 (('book', 'ein'), 0.25),
-                 (('the', 'das'), 0.25),
-                 (('the', 'Buch'), 0.25),
-                 (('book', 'Buch'), 0.25),
-                 (('a', 'ein'), 0.25),
-                 (('book', 'das'), 0.25),
-                 (('the', 'Haus'), 0.25),
-                 (('house', 'das'), 0.25),
-                 (('a', 'Buch'), 0.25)]
+        #loop0 = [(('house', 'Haus'), 0.25),
+        #         (('book', 'ein'), 0.25),
+        #         (('the', 'das'), 0.25),
+        #         (('the', 'Buch'), 0.25),
+        #         (('book', 'Buch'), 0.25),
+        #         (('a', 'ein'), 0.25),
+        #         (('book', 'das'), 0.25),
+        #         (('the', 'Haus'), 0.25),
+        #         (('house', 'das'), 0.25),
+        #         (('a', 'Buch'), 0.25)]
 
         loop1 = [(('house', 'Haus'), 0.5),
                  (('book', 'ein'), 0.5),
@@ -106,7 +106,9 @@ class IBMModel1Test(unittest.TestCase):
                  (('house', 'das'), 0.1818),
                  (('a', 'Buch'), 0.1818)]
         # assertion
-        self.assertEqual(self._format(t0.items()), self._format(loop0))
+        # next assertion doesn't make sence because
+        # initialized by defaultdict
+        #self.assertEqual(self._format(t0.items()), self._format(loop0))
         self.assertEqual(self._format(t1.items()), self._format(loop1))
         self.assertEqual(self._format(t2.items()), self._format(loop2))
 
