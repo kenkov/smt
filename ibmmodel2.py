@@ -3,15 +3,19 @@
 
 from __future__ import division, print_function
 from operator import itemgetter
-import math
 import collections
 from pprint import pprint
-import itertools
+import ibmmodel1
 
 
-def _constant_factory(value):
+class _keydefaultdict(collections.defaultdict):
     '''define a local function for uniform probability initialization'''
-    return itertools.repeat(value).next
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        else:
+            ret = self[key] = self.default_factory(key)
+            return ret
 
 
 def _train(corpus, loop_count=1000):
@@ -19,28 +23,49 @@ def _train(corpus, loop_count=1000):
     for (es, fs) in corpus:
         for f in fs:
             f_keys.add(f)
+    # initialize t
+    t = ibmmodel1._train(corpus, loop_count)
     # default value provided as uniform probability)
-    t = collections.defaultdict(_constant_factory(1/len(f_keys)))
+
+    def key_fun(key):
+        ''' default_factory function for keydefaultdict '''
+        i, j, l_e, l_f = key
+        return 1 / (l_f + 1)
+    a = _keydefaultdict(key_fun)
 
     # loop
-    for i in xrange(loop_count):
+    for _i in xrange(loop_count):
+        # variables for estimating t
         count = collections.defaultdict(float)
         total = collections.defaultdict(float)
+        # variables for estimating a
+        count_a = collections.defaultdict(float)
+        total_a = collections.defaultdict(float)
+
         s_total = collections.defaultdict(float)
         for (es, fs) in corpus:
+            l_e = len(es)
+            l_f = len(fs)
             # compute normalization
-            for e in es:
+            for (j, e) in enumerate(es, 1):
                 s_total[e] = 0
-                for f in fs:
-                    s_total[e] += t[(e, f)]
-            for e in es:
-                for f in fs:
-                    count[(e, f)] += t[(e, f)] / s_total[e]
-                    total[f] += t[(e, f)] / s_total[e]
+                for (i, f) in enumerate(fs, 1):
+                    s_total[e] += t[(e, f)] * a[(i, j, l_e, l_f)]
+            # collect counts
+            for (j, e) in enumerate(es, 1):
+                for (i, f) in enumerate(fs, 1):
+                    c = t[(e, f)] * a[(i, j, l_e, l_f)] / s_total[e]
+                    count[(e, f)] += c
+                    total[f] += c
+                    count_a[(i, j, l_e, l_f)] += c
+                    total_a[(j, l_e, l_f)] += c
         # estimate probability
         for (e, f) in count.keys():
             t[(e, f)] = count[(e, f)] / total[f]
-    return t
+        for (i, j, l_e, l_f) in count_a.keys():
+            a[(i, j, l_e, l_f)] = count_a[(i, j, l_e, l_f)] / \
+                total_a[(j, l_e, l_f)]
+    return (t, a)
 
 
 def train(sent_pairs, loop_count=1000):
@@ -53,25 +78,13 @@ def _pprint(tbl):
         print("p({e}|{f}) = {v}".format(e=e, f=f, v=v))
 
 
-def probability(t, es, fs, epsilon=1):
-    _es = es.split()
-    _fs = fs.split()
-    prod = 1
-    for e in _es:
-        t_sum = 0
-        for f in _fs:
-            t_sum += t[(e, f)]
-        prod *= t_sum
-    return epsilon * prod / math.pow((len(_fs)), len(_es))
-
-
 if __name__ == '__main__':
     sent_pairs = [("the house", "das Haus"),
                   ("the book", "das Buch"),
                   ("a book", "ein Buch"),
                   ]
     #sent_pairs = [("day", "1 2"),
-    #              ("after", "1 2 3")]
+    #              ("after", "1 2")]
     t = train(sent_pairs, loop_count=0)
     pprint(t)
     t = train(sent_pairs, loop_count=1)
