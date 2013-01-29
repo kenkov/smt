@@ -3,6 +3,61 @@
 
 import unittest
 from ibmmodel1 import train
+from word_alignment import alignment
+
+
+class WordAlignmentTest(unittest.TestCase):
+
+    def test_alignment(self):
+        elist = ["michael",
+                 "assumes",
+                 "that",
+                 "he",
+                 "will",
+                 "stay",
+                 "in",
+                 "the",
+                 "house"]
+        flist = ["michael",
+                 "geht",
+                 "davon",
+                 "aus",
+                 ",",
+                 "dass",
+                 "er",
+                 "im",
+                 "haus",
+                 "bleibt"]
+        e2f = {(0, 0),
+               (1, 1),
+               (2, 1),
+               (3, 1),
+               (5, 2),
+               (6, 3),
+               (7, 6),
+               (8, 8),
+               (9, 5)}
+        f2e = {(0, 0),
+               (1, 1),
+               (5, 2),
+               (6, 3),
+               (7, 6),
+               (7, 7),
+               (8, 8),
+               (9, 4),
+               (9, 5)}
+        ans = {(0, 0),
+               (1, 1),
+               (2, 1),
+               (3, 1),
+               (5, 2),
+               (6, 3),
+               (7, 6),
+               (7, 7),
+               (8, 8),
+               (9, 4),
+               (9, 5)}
+        self.assertEqual(alignment(elist, flist, e2f, f2e), ans)
 
 
 class IBMModel1Test(unittest.TestCase):
