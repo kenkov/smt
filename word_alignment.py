@@ -2,17 +2,41 @@
 # coding:utf-8
 
 from __future__ import division, print_function
+import ibmmodel2
 
 
 def alignment(elist, flist, e2f, f2e):
+    '''
+    elist, flist
+        wordlist for each language
+    e2f
+        translatoin alignment from e to f
+        alignment is
+        [(f, e)]
+    f2e
+        translatoin alignment from f to e
+        alignment is
+        [(f, e)]
+    return
+        alignment: {(f, e)}
+             flist
+          -----------------
+        e |               |
+        l |               |
+        i |               |
+        s |               |
+        t |               |
+          -----------------
+
+    '''
     neighboring = {(-1, 0), (0, -1), (1, 0), (0, 1),
                    (-1, -1), (-1, 1), (1, -1), (1, 1)}
     alignment = e2f.intersection(f2e)
     # marge with neighborhood
     while True:
         set_len = len(alignment)
-        for e_word in xrange(len(flist)):
-            for f_word in xrange(len(elist)):
+        for e_word in xrange(1, len(flist)+1):
+            for f_word in xrange(1, len(elist)+1):
                 if (e_word, f_word) in alignment:
                     for (e_diff, f_diff) in neighboring:
                         e_new = e_word + e_diff
@@ -24,8 +48,8 @@ def alignment(elist, flist, e2f, f2e):
         if set_len == len(alignment):
             break
     # finalize
-    for e_word in xrange(len(flist)):
-        for f_word in xrange(len(elist)):
+    for e_word in xrange(1, len(flist)+1):
+        for f_word in xrange(1, len(elist)+1):
             if ((e_word not in zip(*alignment)[0]
                  or f_word not in zip(*alignment)[1])
                 and (e_word, f_word) in e2f.union(f2e)):
@@ -33,12 +57,44 @@ def alignment(elist, flist, e2f, f2e):
     return alignment
 
 
-def show_matrix(m, n, lst):
+def symmetrization(es, fs, corpus):
+    '''
+    forpus
+        for translation from fs to es
+    return
+        alignment **from fs to es**
+    '''
+    f2e_train = ibmmodel2._train(corpus, loop_count=1000)
+    f2e_alignment = ibmmodel2.viterbi_alignment(es, fs, *f2e_train).items()
+    f2e = zip(*reversed(zip(*f2e_alignment)))
+
+    e2f_corpus = zip(*reversed(zip(*corpus)))
+    e2f_train = ibmmodel2._train(e2f_corpus, loop_count=1000)
+    e2f = ibmmodel2.viterbi_alignment(fs, es, *e2f_train).items()
+
+    return alignment(es, fs, set(e2f), set(f2e))
+
+
+def show_matrix(es, fs, corpus):
+    '''
+    return
+        matrix like
+                    fs
+             ----------------
+             |              |
+            e|              |
+            s|              |
+             |              |
+             ----------------
+    '''
+    m = len(es)
+    n = len(fs)
+    lst = symmetrization(es, fs, corpus)
     fmt = ""
     for i in xrange(m):
         fmt += "|"
         for j in xrange(n):
-            if (j, i) in lst:
+            if (j+1, i+1) in lst:
                 fmt += "x|"
             else:
                 fmt += " |"
@@ -47,43 +103,19 @@ def show_matrix(m, n, lst):
 
 
 if __name__ == '__main__':
-    elist = ["michael",
-             "assumes",
-             "that",
-             "he",
-             "will",
-             "stay",
-             "in",
-             "the",
-             "house"]
-    flist = ["michael",
-             "geht",
-             "davon",
-             "aus",
-             ",",
-             "dass",
-             "er",
-             "im",
-             "haus",
-             "bleibt"]
-    e2f = {(0, 0),
-           (1, 1),
-           (2, 1),
-           (3, 1),
-           (5, 2),
-           (6, 3),
-           (7, 6),
-           (8, 8),
-           (9, 5)}
-    f2e = {(0, 0),
-           (1, 1),
-           (5, 2),
-           (6, 3),
-           (7, 6),
-           (7, 7),
-           (8, 8),
-           (9, 4),
-           (9, 5)}
-    print(show_matrix(9, 10, e2f))
-    print(show_matrix(9, 10, f2e))
-    print(show_matrix(9, 10, alignment(elist, flist, e2f, f2e)))
+    sent_pairs = [("僕 は 男 です", "I am a man"),
+                  ("私 は 女 です", "I am a girl"),
+                  ("私 は 先生 です", "I am a teacher"),
+                  ("彼女 は 先生 です", "She is a teacher"),
+                  ("彼 は 先生 です", "He is a teacher"),
+                  ]
+    #sent_pairs = [("the house", "das Haus"),
+    #              ("the book", "das Buch"),
+    #              ("a book", "ein Buch"),
+    #              ]
+    corpus = [(es.split(), fs.split()) for (es, fs) in sent_pairs]
+    args = ("私 は 先生 です".split(), "I am a teacher".split(), corpus)
+    #args = ("a house".split(), "ein Buch".split(), corpus)
+    ans = symmetrization(*args)
+    print(ans)
+    print(show_matrix(*args))

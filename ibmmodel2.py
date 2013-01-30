@@ -78,18 +78,60 @@ def _pprint(tbl):
         print("p({e}|{f}) = {v}".format(e=e, f=f, v=v))
 
 
+def viterbi_alignment(es, fs, t, a):
+    '''
+    return
+        dictionary
+            e in es -> f in fs
+    '''
+    max_a = collections.defaultdict(float)
+    l_e = len(es)
+    l_f = len(fs)
+    for (j, e) in enumerate(es, 1):
+        current_max = (0, -1)
+        for (i, f) in enumerate(fs, 1):
+            val = t[(e, f)] * a[(i, j, l_e, l_f)]
+            # select the first one among the maximum candidates
+            if current_max[1] < val:
+                current_max = (i, val)
+        max_a[j] = current_max[0]
+    return max_a
+
+
+def show_matrix(es, fs, t, a):
+    ''' print matrix according to viterbi alignment '''
+    max_a = zip(*reversed(zip(*viterbi_alignment(es, fs, t, a).items())))
+    m = len(fs)
+    n = len(es)
+    fmt = ""
+    for i in xrange(m):
+        fmt += "|"
+        for j in xrange(n):
+            if (j+1, i+1) in max_a:
+                fmt += "x|"
+            else:
+                fmt += " |"
+        fmt += "\n"
+    return fmt
+
+
 if __name__ == '__main__':
-    sent_pairs = [("the house", "das Haus"),
-                  ("the book", "das Buch"),
-                  ("a book", "ein Buch"),
+    #sent_pairs = [("the house", "das Haus"),
+    #              ("the book", "das Buch"),
+    #              ("a book", "ein Buch"),
+    #              ]
+    #sent_pairs = [("happy day", "1 2"),
+    #              ("after day", "1 2")]
+    sent_pairs = [("僕 は 男 です", "I am a man"),
+                  ("私 は 女 です", "I am a girl"),
+                  ("私 は 先生 です", "I am a teacher"),
+                  ("彼女 は 先生 です", "She is a teacher"),
+                  ("彼 は 先生 です", "He is a teacher"),
                   ]
-    #sent_pairs = [("day", "1 2"),
-    #              ("after", "1 2")]
-    t = train(sent_pairs, loop_count=0)
-    pprint(t)
-    t = train(sent_pairs, loop_count=1)
-    pprint(t)
-    t = train(sent_pairs, loop_count=2)
-    pprint(t)
-    t = train(sent_pairs, loop_count=3)
-    pprint(t)
+    #t = train(sent_pairs, loop_count=0)
+    #t = train(sent_pairs, loop_count=1)
+    #t = train(sent_pairs, loop_count=2)
+    t, a = train(sent_pairs, loop_count=1000)
+    args = ("私 は 先生 です".split(), "I am a teacher".split(), t, a)
+    pprint(viterbi_alignment(*args))
+    print(show_matrix(*args))
