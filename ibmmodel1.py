@@ -19,7 +19,7 @@ def _train(corpus, loop_count=1000):
     for (es, fs) in corpus:
         for f in fs:
             f_keys.add(f)
-    # default value provided as uniform probability)
+    # defaulwt value provided as uniform probability)
     t = collections.defaultdict(_constant_factory(1/len(f_keys)))
 
     # loop
