@@ -23,42 +23,52 @@
   [ky lst]
   (sum (map #(if (= % ky) 1 0) lst)))
 
-(defn count-function
-  [e f es fs t]
-  (let
-    [e-count (count-keys e es)
-     f-count (count-keys f fs)
-     t-sum (sum (for [_f fs] (t [e _f])))]
-    (* (/ (t [e f]) t-sum) (* e-count f-count))))
-
-(defn s-total
-  [es fs t]
+(defn s-total-func
+  [es fs t initial-val]
   (let
     [foreign-es (into [] (set es))]
-    (let [mp (into [] (map #(vector % (t %)) (for [e foreign-es f fs] [e f])))]
+    (let [mp (into [] (map #(vector % (t % initial-val)) (for [e foreign-es f fs] [e f])))]
       (reduce
         (fn [_mp [[e f] vl]] (conj _mp [e (+ (_mp e 0) vl)]))
         {}
         mp))))
 
 (defn count-func
-  [es fs t s-total]
-  (let [mp (into [] (map #(vector % (t %)) (for [e es f fs] [e f])))]
+  [es fs t s-total initial-val]
+  (let [mp (into [] (map #(vector % (t % initial-val)) (for [e es f fs] [e f])))]
     (reduce
       (fn [_mp [[e f] vl]]
         (conj _mp [[e f] (+ (_mp [e f] 0)
-                            (/ (t [e f]) (s-total e)))]))
+                            (/ (t [e f] initial-val) (s-total e)))]))
       {}
       mp)))
 
 (defn total-func
-  [es fs t s-total]
-  (let [mp (into [] (map #(vector % (t %)) (for [e es f fs] [e f])))]
+  [es fs t s-total initial-val]
+  (let [mp (into [] (map #(vector % (t % initial-val)) (for [e es f fs] [e f])))]
     (reduce
       (fn [_mp [[e f] vl]]
         (conj _mp [f (+ (_mp f 0)
-                        (/ (t [e f]) (s-total e)))]))
+                        (/ (t [e f] initial-val) (s-total e)))]))
       {}
+      mp)))
+
+(defn _count-total
+  [es fs t initial-val]
+  (let
+    [s-total-map (s-total-func es fs t initial-val)
+     count-map (count-func es fs t s-total-map initial-val)]
+    [s-total-map count-map]))
+
+(defn count-total
+  [corpus t initial-val]
+  (let
+    [mp (map (fn [[es fs]] (_count-total es fs t initial-val)) corpus)]
+    (reduce
+      (fn [[[s-total-map count-map]] [_s-total-map _count-map]]
+        [(into s-total-map _s-total-map)
+         (into count-map _count-map)])
+      []
       mp)))
 
 (defn estimate
@@ -73,13 +83,15 @@
 (def es [1 2 1])
 (def fs [4 5 4])
 (def t {[1 4] 1, [1 5] 2, [2 4] 3, [2 5] 4})
-(def stotal (s-total es fs t))
+(def stotal (s-total-func es fs t 0))
 
-(s-total es fs t)
-(def count-map (count-func es fs t stotal))
+(def count-map (count-func es fs {} stotal 1))
 (def total-map (total-func es fs t stotal))
-(estimate count-map total-map)
-
 (def sents [["the house", "das Haus"]
             ["the book", "das Buch"]
             ["a book", "ein Buch"]])
+(def corpus (sents-to-corpus sents))
+(estimate count-map total-map)
+(_count-total es fs {} 1)
+(count-total corpus {} 1)
+
