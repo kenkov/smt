@@ -2,7 +2,9 @@
 # coding:utf-8
 
 import unittest
+import collections
 from ibmmodel1 import train
+from ibmmodel2 import viterbi_alignment
 from word_alignment import alignment
 
 
@@ -111,6 +113,20 @@ class IBMModel1Test(unittest.TestCase):
         #self.assertEqual(self._format(t0.items()), self._format(loop0))
         self.assertEqual(self._format(t1.items()), self._format(loop1))
         self.assertEqual(self._format(t2.items()), self._format(loop2))
+
+
+class IBMModel2Test(unittest.TestCase):
+
+    def test_viterbi_alignment(self):
+        x = viterbi_alignment([1, 2, 1],
+                              [2, 3, 2],
+                              collections.defaultdict(int),
+                              collections.defaultdict(int))
+        # Viterbi_alignment selects the first token
+        # if t or a doesn't contain the key.
+        # This means it returns NULL token
+        # in such a situation.
+        self.assertEqual(x, {1: 1, 2: 1, 3: 1})
 
 
 if __name__ == '__main__':
