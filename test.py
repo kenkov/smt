@@ -5,61 +5,46 @@ import unittest
 import collections
 from ibmmodel1 import train
 from ibmmodel2 import viterbi_alignment
-from word_alignment import alignment
+from word_alignment import _alignment
+from word_alignment import symmetrization
+from utility import mkcorpus
 
 
 class WordAlignmentTest(unittest.TestCase):
 
     def test_alignment(self):
-        elist = ["michael",
-                 "assumes",
-                 "that",
-                 "he",
-                 "will",
-                 "stay",
-                 "in",
-                 "the",
-                 "house"]
-        flist = ["michael",
-                 "geht",
-                 "davon",
-                 "aus",
-                 ",",
-                 "dass",
-                 "er",
-                 "im",
-                 "haus",
-                 "bleibt"]
-        e2f = {(1, 1),
-               (2, 2),
-               (3, 2),
-               (4, 2),
-               (6, 3),
-               (7, 4),
-               (8, 7),
-               (9, 9),
-               (10, 6)}
-        f2e = {(1, 1),
-               (2, 2),
-               (6, 3),
-               (7, 4),
-               (8, 7),
-               (8, 8),
-               (9, 9),
-               (10, 5),
-               (10, 6)}
-        ans = {(1, 1),
-               (2, 2),
-               (3, 2),
-               (4, 2),
-               (6, 3),
-               (7, 4),
-               (8, 7),
-               (8, 8),
-               (9, 9),
-               (10, 5),
-               (10, 6)}
-        self.assertEqual(alignment(elist, flist, e2f, f2e), ans)
+        elist = "michael assumes that he will stay in the house".split()
+        flist = "michael geht davon aus , dass er im haus bleibt".split()
+        e2f = [(1, 1), (2, 2), (2, 3), (2, 4), (3, 6),
+               (4, 7), (7, 8), (9, 9), (6, 10)]
+        f2e = [(1, 1), (2, 2), (3, 6), (4, 7), (7, 8),
+               (8, 8), (9, 9), (5, 10), (6, 10)]
+        ans = set([(1, 1),
+                   (2, 2),
+                   (2, 3),
+                   (2, 4),
+                   (3, 6),
+                   (4, 7),
+                   (5, 10),
+                   (6, 10),
+                   (7, 8),
+                   (8, 8),
+                   (9, 9)])
+        self.assertEqual(_alignment(elist, flist, e2f, f2e), ans)
+
+    def symmetrization(self):
+        sentenses = [("僕 は 男 です", "I am a man"),
+                     ("私 は 女 です", "I am a girl"),
+                     ("私 は 先生 です", "I am a teacher"),
+                     ("彼女 は 先生 です", "She is a teacher"),
+                     ("彼 は 先生 です", "He is a teacher"),
+                     ]
+        corpus = mkcorpus(sentenses)
+        es = "私 は 先生 です".split()
+        fs = "I am a teacher".split()
+        syn = symmetrization(es, fs, corpus)
+        ans = set([(1, 1), (1, 2), (2, 3), (3, 4), (4, 3)])
+        self.assertEqual(syn, ans)
 
 
 class IBMModel1Test(unittest.TestCase):

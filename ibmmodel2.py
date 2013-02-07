@@ -3,8 +3,8 @@
 
 from __future__ import division, print_function
 import collections
-from pprint import pprint
 import ibmmodel1
+from utility import matrix
 
 
 class _keydefaultdict(collections.defaultdict):
@@ -92,28 +92,6 @@ def viterbi_alignment(es, fs, t, a):
     return max_a
 
 
-def _matrix(m, n, lst):
-    """
-    m: row
-    n: column
-    lst: items
-
-    >>> print(_matrix(2, 3, [(1, 1), (2, 3)]))
-    |x| | |
-    | | |x|
-    """
-    fmt = ""
-    for i in xrange(1, m+1):
-        fmt += "|"
-        for j in xrange(1, n+1):
-            if (i, j) in lst:
-                fmt += "x|"
-            else:
-                fmt += " |"
-        fmt += "\n"
-    return fmt
-
-
 def show_matrix(es, fs, t, a):
     '''
     print matrix according to viterbi alignment like
@@ -139,7 +117,7 @@ def show_matrix(es, fs, t, a):
     max_a = viterbi_alignment(es, fs, t, a).items()
     m = len(es)
     n = len(fs)
-    return _matrix(m, n, max_a)
+    return matrix(m, n, max_a)
 
 
 if __name__ == '__main__':
@@ -147,18 +125,13 @@ if __name__ == '__main__':
     #              ("the book", "das Buch"),
     #              ("a book", "ein Buch"),
     #              ]
-    #sent_pairs = [("happy day", "1 2"),
-    #              ("after day", "1 2")]
+    print(matrix(2, 3, [(1, 1), (2, 3)]))
     sent_pairs = [("僕 は 男 です", "I am a man"),
                   ("私 は 女 です", "I am a girl"),
                   ("私 は 先生 です", "I am a teacher"),
                   ("彼女 は 先生 です", "She is a teacher"),
                   ("彼 は 先生 です", "He is a teacher"),
                   ]
-    #t = train(sent_pairs, loop_count=0)
-    #t = train(sent_pairs, loop_count=1)
-    #t = train(sent_pairs, loop_count=2)
     t, a = train(sent_pairs, loop_count=1000)
     args = ("私 は 先生 です".split(), "I am a teacher".split(), t, a)
-    pprint(viterbi_alignment(*args))
     print(show_matrix(*args))
