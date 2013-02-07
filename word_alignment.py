@@ -72,8 +72,6 @@ def alignment(es, fs, e2f, f2e):
         [(f, e)] or {(f, e)}
     """
     _e2f = zip(*reversed(zip(*e2f)))
-    pprint(f2e)
-    pprint(_e2f)
     return _alignment(es, fs, _e2f, f2e)
 
 
@@ -105,7 +103,7 @@ if __name__ == '__main__':
     from utility import matrix
     print(matrix(len(es), len(fs), e2f))
     print(matrix(len(es), len(fs), f2e))
-    ali = alignment(es, fs, e2f, f2e)
+    ali = _alignment(es, fs, e2f, f2e)
     print(matrix(len(es), len(fs), ali))
 
     # test for symmetrization

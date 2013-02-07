@@ -32,7 +32,7 @@ class WordAlignmentTest(unittest.TestCase):
                    (9, 9)])
         self.assertEqual(_alignment(elist, flist, e2f, f2e), ans)
 
-    def symmetrization(self):
+    def test_symmetrization(self):
         sentenses = [("僕 は 男 です", "I am a man"),
                      ("私 は 女 です", "I am a girl"),
                      ("私 は 先生 です", "I am a teacher"),
