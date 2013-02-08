@@ -7,6 +7,7 @@ from ibmmodel1 import train
 from ibmmodel2 import viterbi_alignment
 from word_alignment import _alignment
 from word_alignment import symmetrization
+from phrase_extract import phrase_extract
 from utility import mkcorpus
 
 
@@ -112,6 +113,78 @@ class IBMModel2Test(unittest.TestCase):
         # This means it returns NULL token
         # in such a situation.
         self.assertEqual(x, {1: 1, 2: 1, 3: 1})
+
+
+class PhraseExtractTest(unittest.TestCase):
+    def test_phrase_extract(self):
+
+        # next alignment matrix is like
+        #
+        # | |x|x| | |
+        # |x| | |x| |
+        # | | | | |x|
+        #
+        es = range(1, 4)
+        fs = range(1, 6)
+        alignment = [(2, 1),
+                     (1, 2),
+                     (1, 3),
+                     (2, 4),
+                     (3, 5)]
+        ans = set([(1, 1, 2, 3), (1, 3, 1, 5), (3, 3, 5, 5), (1, 2, 1, 4)])
+        self.assertEqual(phrase_extract(es, fs, alignment), ans)
+
+        # next alignment matrix is like
+        #
+        # |x| | | | | | | | | |
+        # | |x|x|x| | | | | | |
+        # | | | | | |x| | | | |
+        # | | | | | | |x| | | |
+        # | | | | | | | | | |x|
+        # | | | | | | | | | |x|
+        # | | | | | | | |x| | |
+        # | | | | | | | |x| | |
+        # | | | | | | | | |x| |
+        #
+        es = "michael assumes that he will stay in the house".split()
+        fs = "michael geht davon aus , dass er im haus bleibt".split()
+        alignment = set([(1, 1),
+                         (2, 2),
+                         (2, 3),
+                         (2, 4),
+                         (3, 6),
+                         (4, 7),
+                         (5, 10),
+                         (6, 10),
+                         (7, 8),
+                         (8, 8),
+                         (9, 9)])
+        ans = set([(1, 1, 1, 1),
+                   (1, 2, 1, 4),
+                   (1, 2, 1, 5),
+                   (1, 3, 1, 6),
+                   (1, 4, 1, 7),
+                   (1, 9, 1, 10),
+                   (2, 2, 2, 4),
+                   (2, 2, 2, 5),
+                   (2, 3, 2, 6),
+                   (2, 4, 2, 7),
+                   (2, 9, 2, 10),
+                   (3, 3, 5, 6),
+                   (3, 3, 6, 6),
+                   (3, 4, 5, 7),
+                   (3, 4, 6, 7),
+                   (3, 9, 5, 10),
+                   (3, 9, 6, 10),
+                   (4, 4, 7, 7),
+                   (4, 9, 7, 10),
+                   (5, 6, 10, 10),
+                   (5, 9, 8, 10),
+                   (7, 8, 8, 8),
+                   (7, 9, 8, 9),
+                   (9, 9, 9, 9)])
+
+        self.assertEqual(phrase_extract(es, fs, alignment), ans)
 
 
 if __name__ == '__main__':
