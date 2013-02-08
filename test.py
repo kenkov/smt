@@ -7,6 +7,7 @@ from ibmmodel1 import train
 from ibmmodel2 import viterbi_alignment
 from word_alignment import _alignment
 from word_alignment import symmetrization
+from phrase_extract import extract
 from phrase_extract import phrase_extract
 from utility import mkcorpus
 
@@ -116,7 +117,7 @@ class IBMModel2Test(unittest.TestCase):
 
 
 class PhraseExtractTest(unittest.TestCase):
-    def test_phrase_extract(self):
+    def test_extract(self):
 
         # next alignment matrix is like
         #
@@ -132,7 +133,7 @@ class PhraseExtractTest(unittest.TestCase):
                      (2, 4),
                      (3, 5)]
         ans = set([(1, 1, 2, 3), (1, 3, 1, 5), (3, 3, 5, 5), (1, 2, 1, 4)])
-        self.assertEqual(phrase_extract(es, fs, alignment), ans)
+        self.assertEqual(extract(es, fs, alignment), ans)
 
         # next alignment matrix is like
         #
@@ -184,6 +185,94 @@ class PhraseExtractTest(unittest.TestCase):
                    (7, 9, 8, 9),
                    (9, 9, 9, 9)])
 
+        self.assertEqual(extract(es, fs, alignment), ans)
+
+    def test_phrase_extract(self):
+        # next alignment matrix is like
+        #
+        # |x| | | | | | | | | |
+        # | |x|x|x| | | | | | |
+        # | | | | | |x| | | | |
+        # | | | | | | |x| | | |
+        # | | | | | | | | | |x|
+        # | | | | | | | | | |x|
+        # | | | | | | | |x| | |
+        # | | | | | | | |x| | |
+        # | | | | | | | | |x| |
+        #
+        es = "michael assumes that he will stay in the house".split()
+        fs = "michael geht davon aus , dass er im haus bleibt".split()
+        alignment = set([(1, 1),
+                         (2, 2),
+                         (2, 3),
+                         (2, 4),
+                         (3, 6),
+                         (4, 7),
+                         (5, 10),
+                         (6, 10),
+                         (7, 8),
+                         (8, 8),
+                         (9, 9)])
+        ans = [(['michael', 'assumes', 'that'],
+                ['michael', 'geht', 'davon', 'aus', ',', 'dass']),
+               (['that', 'he', 'will', 'stay', 'in', 'the', 'house'],
+                [',', 'dass', 'er', 'im', 'haus', 'bleibt']),
+               (['michael', 'assumes', 'that', 'he'],
+                ['michael', 'geht', 'davon', 'aus', ',', 'dass', 'er']),
+               (['he', 'will', 'stay', 'in', 'the', 'house'],
+                ['er', 'im', 'haus', 'bleibt']),
+               (['michael', 'assumes', 'that', 'he',
+                 'will', 'stay', 'in', 'the', 'house'],
+                ['michael', 'geht', 'davon', 'aus',
+                 ',', 'dass', 'er', 'im', 'haus', 'bleibt']),
+               (['michael', 'assumes'],
+                ['michael', 'geht', 'davon', 'aus', ',']),
+               (['will', 'stay', 'in', 'the', 'house'],
+                ['im', 'haus', 'bleibt']),
+               (['assumes', 'that', 'he', 'will',
+                 'stay', 'in', 'the', 'house'],
+                ['geht', 'davon', 'aus', ',',
+                 'dass', 'er', 'im', 'haus', 'bleibt']),
+               (['that'], ['dass']),
+               (['that', 'he'], [',', 'dass', 'er']),
+               (['michael'], ['michael']),
+               (['will', 'stay'], ['bleibt']),
+               (['that', 'he', 'will', 'stay', 'in', 'the', 'house'],
+                ['dass', 'er', 'im', 'haus', 'bleibt']),
+               (['assumes'], ['geht', 'davon', 'aus', ',']),
+               (['assumes', 'that', 'he'],
+                ['geht', 'davon', 'aus', ',', 'dass', 'er']),
+               (['that'], [',', 'dass']),
+               (['assumes', 'that'], ['geht', 'davon', 'aus', ',', 'dass']),
+               (['in', 'the', 'house'], ['im', 'haus']),
+               (['michael', 'assumes'], ['michael', 'geht', 'davon', 'aus']),
+               (['in', 'the'], ['im']),
+               (['assumes'], ['geht', 'davon', 'aus']),
+               (['that', 'he'], ['dass', 'er']),
+               (['house'], ['haus']),
+               (['he'], ['er'])]
+        self.assertEqual(phrase_extract(es, fs, alignment), ans)
+
+        # another test
+        es, fs = ("私 は 先生 です".split(), "I am a teacher".split())
+        sentenses = [("僕 は 男 です", "I am a man"),
+                     ("私 は 女 です", "I am a girl"),
+                     ("私 は 先生 です", "I am a teacher"),
+                     ("彼女 は 先生 です", "She is a teacher"),
+                     ("彼 は 先生 です", "He is a teacher"),
+                     ]
+        corpus = mkcorpus(sentenses)
+        alignment = symmetrization(es, fs, corpus)
+        ans = [(['\xe7\xa7\x81',
+                 '\xe3\x81\xaf',
+                 '\xe5\x85\x88\xe7\x94\x9f',
+                 '\xe3\x81\xa7\xe3\x81\x99'],
+                ['I', 'am', 'a', 'teacher']),
+               (['\xe3\x81\xaf', '\xe5\x85\x88\xe7\x94\x9f',
+                 '\xe3\x81\xa7\xe3\x81\x99'],
+                ['a', 'teacher']),
+               (['\xe7\xa7\x81'], ['I', 'am']),
+               (['\xe5\x85\x88\xe7\x94\x9f'], ['teacher'])]
         self.assertEqual(phrase_extract(es, fs, alignment), ans)
 
 

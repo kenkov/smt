@@ -6,6 +6,13 @@ from pprint import pprint
 
 
 def phrase_extract(es, fs, alignment):
+    ext = extract(es, fs, alignment)
+    ind = [((x, y), (z, w)) for x, y, z, w in ext]
+    return [(es[e_s-1:e_e], fs[f_s-1:f_e])
+            for (e_s, e_e), (f_s, f_e) in ind]
+
+
+def extract(es, fs, alignment):
     """
     caution:
         alignment starts from 1 - not 0
@@ -48,6 +55,7 @@ def _extract(es, fs, e_start, e_end, f_start, f_end, alignment):
 
 
 if __name__ == '__main__':
+    # test 1
     es = "michael assumes that he will stay in the house".split()
     fs = "michael geht davon aus , dass er im haus bleibt".split()
     alignment = set([(1, 1),
@@ -61,6 +69,20 @@ if __name__ == '__main__':
                      (7, 8),
                      (8, 8),
                      (9, 9)])
-    from utility import matrix
-    print(matrix(9, 10, alignment))
     pprint(phrase_extract(es, fs, alignment))
+    # test2
+    from utility import mkcorpus
+    from word_alignment import symmetrization
+    sentenses = [("僕 は 男 です", "I am a man"),
+                 ("私 は 女 です", "I am a girl"),
+                 ("私 は 先生 です", "I am a teacher"),
+                 ("彼女 は 先生 です", "She is a teacher"),
+                 ("彼 は 先生 です", "He is a teacher"),
+                 ]
+    corpus = mkcorpus(sentenses)
+    es, fs = ("私 は 先生 です".split(), "I am a teacher".split())
+    alignment = symmetrization(es, fs, corpus)
+    ext = phrase_extract(es, fs, alignment)
+    pprint(ext)
+    for e, f in ext:
+        print(' '.join(e), "<->", ' '.join(f))
