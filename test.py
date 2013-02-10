@@ -301,7 +301,10 @@ class PhraseExtractTest(unittest.TestCase):
                        ("teacher",),
                        ("I", "am", "a", "teacher")])
 
-        ans = set([(4, 'teacher'), (3, 'a'), (1, 'I'), (2, 'am')])
+        ans = set([((4, 'teacher'),),
+                   ((1, 'I'), (2, 'am')),
+                   ((3, 'a'), (4, 'teacher')),
+                   ((1, 'I'), (2, 'am'), (3, 'a'), (4, 'teacher'))])
         self.assertEqual(available_phrases(fs, phrases), ans)
 
 if __name__ == '__main__':

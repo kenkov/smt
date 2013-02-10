@@ -57,6 +57,13 @@ def _extract(es, fs, e_start, e_end, f_start, f_end, alignment):
 
 
 def available_phrases(fs, phrases):
+    """
+    return:
+        set of phrase indexed tuple like
+            {((1, "I"), (2, "am")),
+             ((1, "I"),)
+             ...}
+    """
     available = set()
     for i, f in enumerate(fs):
         f_rest = ()
