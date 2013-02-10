@@ -7,9 +7,11 @@ from pprint import pprint
 
 def phrase_extract(es, fs, alignment):
     ext = extract(es, fs, alignment)
-    ind = [((x, y), (z, w)) for x, y, z, w in ext]
-    return [(es[e_s-1:e_e], fs[f_s-1:f_e])
-            for (e_s, e_e), (f_s, f_e) in ind]
+    ind = {((x, y), (z, w)) for x, y, z, w in ext}
+    es = tuple(es)
+    fs = tuple(fs)
+    return {(es[e_s-1:e_e], fs[f_s-1:f_e])
+            for (e_s, e_e), (f_s, f_e) in ind}
 
 
 def extract(es, fs, alignment):
@@ -54,22 +56,32 @@ def _extract(es, fs, e_start, e_end, f_start, f_end, alignment):
     return ex
 
 
+def available_phrases(fs, phrases):
+    available = set()
+    for phrase in phrases:
+        for ind, f in enumerate(fs, 1):
+            if f in phrase and phrase not in available:
+                available.add((ind, f))
+    return available
+
+
 if __name__ == '__main__':
     # test 1
-    es = "michael assumes that he will stay in the house".split()
-    fs = "michael geht davon aus , dass er im haus bleibt".split()
-    alignment = set([(1, 1),
-                     (2, 2),
-                     (2, 3),
-                     (2, 4),
-                     (3, 6),
-                     (4, 7),
-                     (5, 10),
-                     (6, 10),
-                     (7, 8),
-                     (8, 8),
-                     (9, 9)])
-    pprint(phrase_extract(es, fs, alignment))
+    #es = "michael assumes that he will stay in the house".split()
+    #fs = "michael geht davon aus , dass er im haus bleibt".split()
+    #alignment = set([(1, 1),
+    #                 (2, 2),
+    #                 (2, 3),
+    #                 (2, 4),
+    #                 (3, 6),
+    #                 (4, 7),
+    #                 (5, 10),
+    #                 (6, 10),
+    #                 (7, 8),
+    #                 (8, 8),
+    #                 (9, 9)])
+    #pprint(phrase_extract(es, fs, alignment))
+
     # test2
     from utility import mkcorpus
     from word_alignment import symmetrization
@@ -86,3 +98,11 @@ if __name__ == '__main__':
     pprint(ext)
     for e, f in ext:
         print(' '.join(e), "<->", ' '.join(f))
+
+    # phrases
+    fs = "I am a teacher".split()
+    phrases = set([("I", "am"),
+                   ("a", "teacher"),
+                   ("teacher",),
+                   ("I", "am", "a", "teacher")])
+    print(available_phrases(fs, phrases))

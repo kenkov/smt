@@ -9,6 +9,7 @@ from word_alignment import _alignment
 from word_alignment import symmetrization
 from phrase_extract import extract
 from phrase_extract import phrase_extract
+from phrase_extract import available_phrases
 from utility import mkcorpus
 
 
@@ -213,44 +214,61 @@ class PhraseExtractTest(unittest.TestCase):
                          (7, 8),
                          (8, 8),
                          (9, 9)])
-        ans = [(['michael', 'assumes', 'that'],
-                ['michael', 'geht', 'davon', 'aus', ',', 'dass']),
-               (['that', 'he', 'will', 'stay', 'in', 'the', 'house'],
-                [',', 'dass', 'er', 'im', 'haus', 'bleibt']),
-               (['michael', 'assumes', 'that', 'he'],
-                ['michael', 'geht', 'davon', 'aus', ',', 'dass', 'er']),
-               (['he', 'will', 'stay', 'in', 'the', 'house'],
-                ['er', 'im', 'haus', 'bleibt']),
-               (['michael', 'assumes', 'that', 'he',
-                 'will', 'stay', 'in', 'the', 'house'],
-                ['michael', 'geht', 'davon', 'aus',
-                 ',', 'dass', 'er', 'im', 'haus', 'bleibt']),
-               (['michael', 'assumes'],
-                ['michael', 'geht', 'davon', 'aus', ',']),
-               (['will', 'stay', 'in', 'the', 'house'],
-                ['im', 'haus', 'bleibt']),
-               (['assumes', 'that', 'he', 'will',
-                 'stay', 'in', 'the', 'house'],
-                ['geht', 'davon', 'aus', ',',
-                 'dass', 'er', 'im', 'haus', 'bleibt']),
-               (['that'], ['dass']),
-               (['that', 'he'], [',', 'dass', 'er']),
-               (['michael'], ['michael']),
-               (['will', 'stay'], ['bleibt']),
-               (['that', 'he', 'will', 'stay', 'in', 'the', 'house'],
-                ['dass', 'er', 'im', 'haus', 'bleibt']),
-               (['assumes'], ['geht', 'davon', 'aus', ',']),
-               (['assumes', 'that', 'he'],
-                ['geht', 'davon', 'aus', ',', 'dass', 'er']),
-               (['that'], [',', 'dass']),
-               (['assumes', 'that'], ['geht', 'davon', 'aus', ',', 'dass']),
-               (['in', 'the', 'house'], ['im', 'haus']),
-               (['michael', 'assumes'], ['michael', 'geht', 'davon', 'aus']),
-               (['in', 'the'], ['im']),
-               (['assumes'], ['geht', 'davon', 'aus']),
-               (['that', 'he'], ['dass', 'er']),
-               (['house'], ['haus']),
-               (['he'], ['er'])]
+        ans = set([(('assumes',), ('geht', 'davon', 'aus')),
+                   (('assumes',), ('geht', 'davon', 'aus', ',')),
+                   (('assumes', 'that'),
+                    ('geht', 'davon', 'aus', ',', 'dass')),
+                   (('assumes', 'that', 'he'),
+                    ('geht', 'davon', 'aus', ',', 'dass', 'er')),
+                   (('assumes', 'that', 'he',
+                     'will', 'stay', 'in', 'the', 'house'),
+                    ('geht', 'davon', 'aus', ',', 'dass',
+                     'er', 'im', 'haus', 'bleibt')),
+                   (('he',), ('er',)),
+                   (('he', 'will', 'stay', 'in', 'the', 'house'),
+                    ('er', 'im', 'haus', 'bleibt')),
+                   (('house',), ('haus',)),
+                   (('in', 'the'), ('im',)),
+                   (('in', 'the', 'house'), ('im', 'haus')),
+                   (('michael',), ('michael',)),
+                   (('michael', 'assumes'),
+                    ('michael', 'geht', 'davon', 'aus')),
+                   (('michael', 'assumes'),
+                    ('michael', 'geht', 'davon', 'aus', ',')),
+                   (('michael', 'assumes', 'that'),
+                    ('michael', 'geht', 'davon', 'aus', ',', 'dass')),
+                   (('michael', 'assumes', 'that', 'he'),
+                    ('michael', 'geht', 'davon', 'aus', ',', 'dass', 'er')),
+                   (('michael',
+                     'assumes',
+                     'that',
+                     'he',
+                     'will',
+                     'stay',
+                     'in',
+                     'the',
+                     'house'),
+                    ('michael',
+                     'geht',
+                     'davon',
+                     'aus',
+                     ',',
+                     'dass',
+                     'er',
+                     'im',
+                     'haus',
+                     'bleibt')),
+                   (('that',), (',', 'dass')),
+                   (('that',), ('dass',)),
+                   (('that', 'he'), (',', 'dass', 'er')),
+                   (('that', 'he'), ('dass', 'er')),
+                   (('that', 'he', 'will', 'stay', 'in', 'the', 'house'),
+                    (',', 'dass', 'er', 'im', 'haus', 'bleibt')),
+                   (('that', 'he', 'will', 'stay', 'in', 'the', 'house'),
+                    ('dass', 'er', 'im', 'haus', 'bleibt')),
+                   (('will', 'stay'), ('bleibt',)),
+                   (('will', 'stay', 'in', 'the', 'house'),
+                    ('im', 'haus', 'bleibt'))])
         self.assertEqual(phrase_extract(es, fs, alignment), ans)
 
         # another test
@@ -263,18 +281,28 @@ class PhraseExtractTest(unittest.TestCase):
                      ]
         corpus = mkcorpus(sentenses)
         alignment = symmetrization(es, fs, corpus)
-        ans = [(['\xe7\xa7\x81',
-                 '\xe3\x81\xaf',
-                 '\xe5\x85\x88\xe7\x94\x9f',
-                 '\xe3\x81\xa7\xe3\x81\x99'],
-                ['I', 'am', 'a', 'teacher']),
-               (['\xe3\x81\xaf', '\xe5\x85\x88\xe7\x94\x9f',
-                 '\xe3\x81\xa7\xe3\x81\x99'],
-                ['a', 'teacher']),
-               (['\xe7\xa7\x81'], ['I', 'am']),
-               (['\xe5\x85\x88\xe7\x94\x9f'], ['teacher'])]
+        ans = set([(('\xe3\x81\xaf',
+                     '\xe5\x85\x88\xe7\x94\x9f',
+                     '\xe3\x81\xa7\xe3\x81\x99'),
+                    ('a', 'teacher')),
+                   (('\xe5\x85\x88\xe7\x94\x9f',), ('teacher',)),
+                   (('\xe7\xa7\x81',), ('I', 'am')),
+                   (('\xe7\xa7\x81',
+                     '\xe3\x81\xaf',
+                     '\xe5\x85\x88\xe7\x94\x9f',
+                     '\xe3\x81\xa7\xe3\x81\x99'),
+                    ('I', 'am', 'a', 'teacher'))])
         self.assertEqual(phrase_extract(es, fs, alignment), ans)
 
+    def test_available_phrases(self):
+        fs = "I am a teacher".split()
+        phrases = set([("I", "am"),
+                       ("a", "teacher"),
+                       ("teacher",),
+                       ("I", "am", "a", "teacher")])
+
+        ans = set([(4, 'teacher'), (3, 'a'), (1, 'I'), (2, 'am')])
+        self.assertEqual(available_phrases(fs, phrases), ans)
 
 if __name__ == '__main__':
     unittest.main()
