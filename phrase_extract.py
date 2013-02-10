@@ -58,10 +58,12 @@ def _extract(es, fs, e_start, e_end, f_start, f_end, alignment):
 
 def available_phrases(fs, phrases):
     available = set()
-    for phrase in phrases:
-        for ind, f in enumerate(fs, 1):
-            if f in phrase and phrase not in available:
-                available.add((ind, f))
+    for i, f in enumerate(fs):
+        f_rest = ()
+        for fr in fs[i:]:
+            f_rest += (fr,)
+            if f_rest in phrases:
+                available.add(tuple(enumerate(f_rest, i+1)))
     return available
 
 
