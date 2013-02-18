@@ -114,4 +114,5 @@ if __name__ == '__main__':
                    ("a", "teacher"),
                    ("teacher",),
                    ("I", "am", "a", "teacher")])
-    print(available_phrases(fs, phrases))
+    phrases = available_phrases(fs, [fs_ph for (es_ph, fs_ph) in ext])
+    print(phrases)
