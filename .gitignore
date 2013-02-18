@@ -1,3 +1,6 @@
 *.pyc
-twitter/
-jec_basic_sentence/
+twitter/:twitter:
+twitter/test.txt
+jec_basic_sentence/:db:
+jec_basic_sentence/terminal.py
+jec_basic_sentence/JEC_basic_sentence_v1-2.xls
