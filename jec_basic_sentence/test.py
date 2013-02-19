@@ -153,4 +153,4 @@ if __name__ == "__main__":
     #print(ext)
     #for e, f in ext:
     #    print(' '.join(e), "<->", ' '.join(f))
-    create_phrase_db(db_name=":jec_basic:", limit=10)
+    create_phrase_db(db_name=":jec_basic:", limit=None)
