@@ -59,7 +59,6 @@ def _alignment(elist, flist, e2f, f2e):
     # finalize
     for e_word in xrange(1, m+1):
         for f_word in xrange(1, n+1):
-            print(alignment)
             # for alignment = set([])
             if not alignment:
                 if (e_word, f_word) in e2f.union(f2e):
