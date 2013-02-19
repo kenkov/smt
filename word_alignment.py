@@ -46,19 +46,29 @@ def _alignment(elist, flist, e2f, f2e):
                     for (e_diff, f_diff) in neighboring:
                         e_new = e_word + e_diff
                         f_new = f_word + f_diff
-                        if ((e_new not in zip(*alignment)[0]
-                             or f_new not in zip(*alignment)[1])
-                            and (e_new, f_new) in e2f.union(f2e)):
-                            alignment.add((e_new, f_new))
+                        if not alignment:
+                            if (e_new, f_new) in e2f.union(f2e):
+                                alignment.add((e_new, f_new))
+                        else:
+                            if ((e_new not in zip(*alignment)[0]
+                                 or f_new not in zip(*alignment)[1])
+                                and (e_new, f_new) in e2f.union(f2e)):
+                                alignment.add((e_new, f_new))
         if set_len == len(alignment):
             break
     # finalize
     for e_word in xrange(1, m+1):
         for f_word in xrange(1, n+1):
-            if ((e_word not in zip(*alignment)[0]
-                 or f_word not in zip(*alignment)[1])
-                and (e_word, f_word) in e2f.union(f2e)):
-                alignment.add((e_word, f_word))
+            print(alignment)
+            # for alignment = set([])
+            if not alignment:
+                if (e_word, f_word) in e2f.union(f2e):
+                    alignment.add((e_word, f_word))
+            else:
+                if ((e_word not in zip(*alignment)[0]
+                     or f_word not in zip(*alignment)[1])
+                    and (e_word, f_word) in e2f.union(f2e)):
+                    alignment.add((e_word, f_word))
     return alignment
 
 
