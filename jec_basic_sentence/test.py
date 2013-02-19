@@ -5,7 +5,7 @@ from __future__ import division, print_function
 import sqlite3
 import sys
 import collections
-from pprint import pprint
+#from pprint import pprint
 sys.path.append("../")
 import ibmmodel2
 import word_alignment
@@ -86,7 +86,7 @@ def db_show_matrix(es, fs, trans, db_name=":db:"):
     return ibmmodel2.matrix(m, n, max_a)
 
 
-def db_symmetrization(es, fs, db_name=":db:"):
+def _db_symmetrization(es, fs, db_name=":db:"):
     '''
     translation from English to Japanese
     en: Japanese
@@ -99,16 +99,58 @@ def db_symmetrization(es, fs, db_name=":db:"):
     return word_alignment.alignment(es, fs, e2f, f2e)
 
 
+def db_phrase_extract(es, fs, db_name=":db:"):
+    ja = keitaiso.str2wakati(es).split()
+    en = fs.split()
+    alignment = _db_symmetrization(ja, en,
+                                   db_name=db_name)
+    return phrase_extract.phrase_extract(ja, en, alignment)
+
+
+def create_phrase_db(db_name=":db:", limit=None):
+    # create table
+    table_name = "phrase"
+    con = sqlite3.connect(db_name)
+    cur = con.cursor()
+    try:
+        cur.execute("drop table {0}".format(table_name))
+    except sqlite3.Error:
+        print("{0} table does not exists.\
+              creating a new table".format(table_name))
+    cur.execute("create table {0}\
+                (ja_phrase TEXT, en_phrase TEXT)".format(table_name))
+    con.commit()
+
+    cur_loop = con.cursor()
+    if limit:
+        cur_loop.execute("select ja, en from sentence limit ?",
+                         (limit,))
+    else:
+        cur_loop.execute("select ja, en from sentence")
+
+    for ja, en in cur_loop:
+        print(ja, en)
+        for ja_phrase, en_phrase in db_phrase_extract(ja, en,
+                                                      db_name=db_name):
+            ja_p = u" ".join(ja_phrase)
+            en_p = u" ".join(en_phrase)
+            cur.execute("insert into {0} values\
+                        (?, ?)".format(table_name),
+                        (ja_p, en_p))
+    con.commit()
+
+
 if __name__ == "__main__":
 
-    ja = keitaiso.str2wakati(u"人生とは何ですか")
-    en = u"what is life"
-    args = (ja.split(), en.split())
-    print(db_show_matrix(*args, trans="en2ja", db_name=":jec_basic:"))
+    #ja = keitaiso.str2wakati(u"人生とは何ですか")
+    #en = u"what is life"
+    #args = (ja.split(), en.split())
+    #print(db_show_matrix(*args, trans="en2ja", db_name=":jec_basic:"))
 
-    alignment = db_symmetrization(*args,
-                                  db_name=":jec_basic:")
-    ext = phrase_extract.phrase_extract(args[0], args[1], alignment)
-    pprint(ext)
-    for e, f in ext:
-        print(' '.join(e), "<->", ' '.join(f))
+    #ja = u"私は今から家に帰る所です"
+    #en = u"I am going back home now"
+    #ext = db_phrase_extract(ja, en, db_name=":jec_basic:")
+    #print(ext)
+    #for e, f in ext:
+    #    print(' '.join(e), "<->", ' '.join(f))
+    create_phrase_db(db_name=":jec_basic:", limit=10)
