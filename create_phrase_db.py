@@ -147,6 +147,57 @@ def create_phrase_db(db_name=":db:", limit=None):
     con.commit()
 
 
-if __name__ == "__main__":
+def create_phrase_count_view(db_name=":db:"):
 
-    create_phrase_db(db_name=":jec_basic:", limit=None)
+    # create phrase_count table
+    table_name = "phrase_count"
+    con = sqlite3.connect(db_name)
+    cur = con.cursor()
+    try:
+        cur.execute("drop view {0}".format(table_name))
+    except sqlite3.Error:
+        print("{0} view does not exists.\
+              creating a new view".format(table_name))
+    cur.execute("""create view {0}
+                 as select *, count(*) as count from
+                phrase group by ja_phrase, en_phrase order by count
+                desc""".format(table_name))
+    con.commit()
+
+    # create phrase_count_ja table
+    table_name_ja = "phrase_count_ja"
+    con = sqlite3.connect(db_name)
+    cur = con.cursor()
+    try:
+        cur.execute("drop view {0}".format(table_name_ja))
+    except sqlite3.Error:
+        print("{0} view does not exists.\
+              creating a new view".format(table_name_ja))
+    cur.execute("""create view {0}
+                as select ja_phrase,
+                sum(count) as count from phrase_count group by
+                ja_phrase order
+                by count desc""".format(table_name_ja))
+    con.commit()
+
+    # create phrase_count_en table
+    table_name_en = "phrase_count_en"
+    con = sqlite3.connect(db_name)
+    cur = con.cursor()
+    try:
+        cur.execute("drop view {0}".format(table_name_en))
+    except sqlite3.Error:
+        print("{0} view does not exists.\
+              creating a new view".format(table_name_en))
+    cur.execute("""create view {0}
+                as select en_phrase,
+                sum(count) as count from phrase_count group by
+                en_phrase order
+                by count desc""".format(table_name_en))
+    con.commit()
+
+
+if __name__ == "__main__":
+    pass
+    #create_phrase_db(db_name=":jec_basic:", limit=None)
+    #create_phrase_count_view(db_name=":jec_basic:")
