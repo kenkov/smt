@@ -39,6 +39,7 @@ def excel_convert(db_name=":jec_basic"):
 
 
 if __name__ == '__main__':
+    # test
     limit = 10
     loop_count = 10
     db_name = ":test:"
