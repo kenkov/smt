@@ -13,3 +13,5 @@ if __name__ == '__main__':
     f = u"は"
     prob = decode.phrase_prob(e, f, trans="en2ja", db_name=":jec_basic:")
     pprint(prob)
+    pprint(decode.available_phrases(u"He is a teacher.".split(),
+                                    db_name=":jec_basic:"))

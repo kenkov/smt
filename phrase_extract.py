@@ -108,7 +108,7 @@ if __name__ == '__main__':
     for e, f in ext:
         print(' '.join(e), "<->", ' '.join(f))
 
-    # phrases
+    ## phrases
     fs = "I am a teacher".split()
     phrases = set([("I", "am"),
                    ("a", "teacher"),

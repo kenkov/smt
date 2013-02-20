@@ -2,7 +2,83 @@
 # coding:utf-8
 
 from __future__ import division, print_function
+import sqlite3
 #from pprint import pprint
+
+
+def phrase_prob(f, e, trans, db_name=":db:"):
+    """
+    >>> e = u"I"
+    >>> f = u"は"
+    >>> prob = decode.phrase_prob(e, f, trans="en2ja", db_name=":jec_basic:")
+    >>> pprint(prob)
+    """
+    if trans not in ["en2ja", "ja2en"]:
+        raise Exception("trans argument should be either en2ja or ja2en")
+    con = sqlite3.connect(db_name)
+    cur = con.cursor()
+    if trans == "en2ja":
+        cur.execute("""select count
+                    from phrase_count where en_phrase=? and
+                    ja_phrase=?""",
+                    (f, e))
+        count_e_f = list(cur)
+        if count_e_f:
+            count_e_f = count_e_f[0][0]
+        cur.execute("""select count
+                    from phrase_count_ja where
+                    ja_phrase=?""",
+                    (e,))
+        count_e = list(cur)
+        if count_e:
+            count_e = count_e[0][0]
+    elif trans == "ja2en":
+        cur.execute("""select count
+                    from phrase_count where en_phrase=? and
+                    ja_phrase=?""",
+                    (e, f))
+        count_e_f = list(cur)
+        if count_e_f:
+            count_e_f = count_e_f[0][0]
+        cur.execute("""select count
+                    from phrase_count_en where
+                    en_phrase=?""",
+                    (e,))
+        count_e = list(cur)
+        if count_e:
+            count_e = count_e[0][0]
+    # smoothing
+    if (not count_e_f) or (not count_e):
+        return 1e-10
+    else:
+        return count_e_f / count_e
+
+
+def available_phrases(fs, db_name=":db:"):
+    """
+    >>> decode.available_phrases(u"He is a teacher.".split(),
+                                 db_name=":db:"))
+    set([((1, u'He'),),
+         ((1, u'He'), (2, u'is')),
+         ((2, u'is'),),
+         ((2, u'is'), (3, u'a')),
+         ((3, u'a'),),
+         ((4, u'teacher.'),)])
+    """
+    available = set()
+    con = sqlite3.connect(db_name)
+    cur = con.cursor()
+    for i, f in enumerate(fs):
+        f_rest = ()
+        for fr in fs[i:]:
+            f_rest += (fr,)
+            cur.execute("""select * from phrase where
+                        en_phrase=?""",
+                        (" ".join(f_rest),))
+            lst = list(cur)
+            if lst:
+                available.add(tuple(enumerate(f_rest, i+1)))
+    return available
 
 
 class Hypothesis:
@@ -33,7 +109,7 @@ class Hypothesis:
              "sentence": self._sentence,
              "probability": self._probability
              }
-        return "\n".join([k + ": " + unicode(v) for (k, v) in d.items()])
+        return u"\n".join([k + u": " + unicode(v) for (k, v) in d.items()])
 
     def __str__(self):
         return unicode(self).encode('utf-8')
@@ -86,6 +162,7 @@ def stack_decode(fs, phrases, phrase_prob, dist_prob):
 
 if __name__ == '__main__':
     from phrase_extract import available_phrases
+    from pprint import pprint
     # phrases
     fs = "I am a teacher".split()
     phrases = set([("I", "am"),
@@ -93,9 +170,10 @@ if __name__ == '__main__':
                    ("teacher",),
                    ("I", "am", "a", "teacher")])
     phrases = available_phrases(fs, phrases)
-    hyp0 = Hypothesis((), (), {},
-                      0, 0, tuple(enumerate(fs, 1)),
-                      phrases, ())
-    print(hyp0)
-    stack = Stack()
-    stack.add_hyp(hyp0)
+    pprint(phrases)
+    #hyp0 = Hypothesis((), (), {},
+    #                  0, 0, tuple(enumerate(fs, 1)),
+    #                  phrases, ())
+    #print(hyp0)
+    #stack = Stack()
+    #stack.add_hyp(hyp0)
