@@ -135,8 +135,9 @@ def create_phrase_db(db_name=":db:", limit=None):
     else:
         cur_loop.execute("select ja, en from sentence")
 
+    print("extracting phrases...")
     for ja, en in cur_loop:
-        print(ja, en)
+        print("  ", ja, en)
         for ja_phrase, en_phrase in db_phrase_extract(ja, en,
                                                       db_name=db_name):
             ja_p = u" ".join(ja_phrase)
@@ -144,6 +145,7 @@ def create_phrase_db(db_name=":db:", limit=None):
             cur.execute("insert into {0} values\
                         (?, ?)".format(table_name),
                         (ja_p, en_p))
+    print("extracting phrases done")
     con.commit()
 
 
@@ -156,8 +158,8 @@ def create_phrase_count_view(db_name=":db:"):
     try:
         cur.execute("drop view {0}".format(table_name))
     except sqlite3.Error:
-        print("{0} view does not exists.\
-              creating a new view".format(table_name))
+        print("{0} view does not exists.\n\
+              => creating a new view".format(table_name))
     cur.execute("""create view {0}
                  as select *, count(*) as count from
                 phrase group by ja_phrase, en_phrase order by count
@@ -171,8 +173,8 @@ def create_phrase_count_view(db_name=":db:"):
     try:
         cur.execute("drop view {0}".format(table_name_ja))
     except sqlite3.Error:
-        print("{0} view does not exists.\
-              creating a new view".format(table_name_ja))
+        print("{0} view does not exists.\n\
+              => creating a new view".format(table_name_ja))
     cur.execute("""create view {0}
                 as select ja_phrase,
                 sum(count) as count from phrase_count group by
@@ -187,8 +189,8 @@ def create_phrase_count_view(db_name=":db:"):
     try:
         cur.execute("drop view {0}".format(table_name_en))
     except sqlite3.Error:
-        print("{0} view does not exists.\
-              creating a new view".format(table_name_en))
+        print("{0} view does not exists.\n\
+              => creating a new view".format(table_name_en))
     cur.execute("""create view {0}
                 as select en_phrase,
                 sum(count) as count from phrase_count group by

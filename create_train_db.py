@@ -68,8 +68,8 @@ def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
     try:
         cur.execute("drop table {0}".format(prob_tablename))
     except sqlite3.Error:
-        print("{0} table does not exists.\
-              creating a new table".format(prob_tablename))
+        print("{0} table does not exists.\n\
+              => creating a new table".format(prob_tablename))
     cur.execute("create table {0}\
                 (to_ TEXT, from_ TEXT, prob REAL)".format(prob_tablename))
     con.commit()
@@ -79,8 +79,8 @@ def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
     try:
         cur.execute("drop table {0}".format(align_tablename))
     except sqlite3.Error:
-        print("{0} table does not exists.\
-              creating a new table".format(align_tablename))
+        print("{0} table does not exists.\n\
+              => creating a new table".format(align_tablename))
     cur.execute("create table {0}\
                 (from_pos INTEGER, to_pos INTEGER,\
                 to_len INTEGER, from_len INTEGER, prob\
@@ -109,12 +109,12 @@ def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
     p.stop()
 
 if __name__ == "__main__":
-
-    create_train_db(trans="en2ja",
-                    db_name=":jec_basic:",
-                    limit=None,
-                    loop_count=1000)
-    create_train_db(trans="ja2en",
-                    db_name=":jec_basic:",
-                    limit=None,
-                    loop_count=1000)
+    pass
+    #create_train_db(trans="en2ja",
+    #                db_name=":jec_basic:",
+    #                limit=None,
+    #                loop_count=1000)
+    #create_train_db(trans="ja2en",
+    #                db_name=":jec_basic:",
+    #                limit=None,
+    #                loop_count=1000)

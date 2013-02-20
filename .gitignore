@@ -1,7 +1,9 @@
 *.pyc
+terminal.py
 twitter/:twitter:
 twitter/test.txt
 jec_basic_sentence/:jec_basic:
 jec_basic_sentence/:jec_basic:-journal
+jec_basic_sentence/:test:
 jec_basic_sentence/terminal.py
 jec_basic_sentence/JEC_basic_sentence_v1-2.xls

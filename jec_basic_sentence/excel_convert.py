@@ -11,7 +11,8 @@ cur = con.cursor()
 try:
     cur.execute("drop table sentence")
 except sqlite3.Error:
-    print("sentence table does not exists. creating a new table")
+    print("sentence table does not exists.\n\
+          => creating a new table")
 
 cur.execute("create table sentence (ja TEXT, en TEXT)")
 con.commit()
