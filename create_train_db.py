@@ -110,11 +110,3 @@ def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
 
 if __name__ == "__main__":
     pass
-    #create_train_db(trans="en2ja",
-    #                db_name=":jec_basic:",
-    #                limit=None,
-    #                loop_count=1000)
-    #create_train_db(trans="ja2en",
-    #                db_name=":jec_basic:",
-    #                limit=None,
-    #                loop_count=1000)
