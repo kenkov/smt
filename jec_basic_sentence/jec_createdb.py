@@ -6,9 +6,9 @@ import sys
 import sqlite3
 import xlrd
 sys.path.append("../")
-from create_train_db import create_train_db
-from create_phrase_db import create_phrase_db
-from create_phrase_db import create_phrase_count_view
+from createdb import create_train_db
+from createdb import create_phrase_db
+from createdb import create_phrase_count_view
 
 
 def excel_convert(db_name=":jec_basic"):
