@@ -50,6 +50,7 @@ def phrase_prob(f, e, trans, db_name=":db:"):
             count_e = count_e[0][0]
     # smoothing
     if (not count_e_f) or (not count_e):
+        print("not found", count_e_f, count_e)
         return 1e-10
     else:
         return count_e_f / count_e

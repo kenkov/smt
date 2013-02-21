@@ -9,9 +9,10 @@ sys.path.append("../")
 from createdb import create_train_db
 from createdb import create_phrase_db
 from createdb import create_phrase_count_view
+from createdb import create_phrase_prob
 
 
-def excel_convert(db_name=":jec_basic"):
+def excel_convert(db_name=":jec_basic:"):
 
     # db setup
     con = sqlite3.connect(db_name)
@@ -40,17 +41,18 @@ def excel_convert(db_name=":jec_basic"):
 
 if __name__ == '__main__':
     # test
-    limit = 10
-    loop_count = 10
-    db_name = ":test:"
-    excel_convert(db_name=db_name)
-    create_train_db(trans="en2ja",
-                    db_name=db_name,
-                    limit=limit,
-                    loop_count=loop_count)
-    create_train_db(trans="ja2en",
-                    db_name=db_name,
-                    limit=limit,
-                    loop_count=loop_count)
-    create_phrase_db(db_name=db_name, limit=limit)
-    create_phrase_count_view(db_name=":test:")
+    #limit = 10
+    #loop_count = 10
+    #db_name = ":test:"
+    #excel_convert(db_name=db_name)
+    #create_train_db(trans="en2ja",
+    #                db_name=db_name,
+    #                limit=limit,
+    #                loop_count=loop_count)
+    #create_train_db(trans="ja2en",
+    #                db_name=db_name,
+    #                limit=limit,
+    #                loop_count=loop_count)
+    #create_phrase_db(db_name=db_name, limit=limit)
+    #create_phrase_count_view(db_name=":test:")
+    create_phrase_prob(trans="en2ja", db_name=":jec_basic:")

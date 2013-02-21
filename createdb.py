@@ -57,7 +57,6 @@ def create_corpus(trans, db_name=":db:", limit=None):
 
 
 def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
-
     if not trans in ["en2ja", "ja2en"]:
         raise Exception("please select en2ja or ja2en for trans argmument")
 
@@ -252,7 +251,6 @@ def create_phrase_db(db_name=":db:", limit=None):
 
 
 def create_phrase_count_view(db_name=":db:"):
-
     # create phrase_count table
     table_name = "phrase_count"
     con = sqlite3.connect(db_name)
@@ -298,6 +296,53 @@ def create_phrase_count_view(db_name=":db:"):
                 sum(count) as count from phrase_count group by
                 en_phrase order
                 by count desc""".format(table_name_en))
+    con.commit()
+
+
+def create_phrase_prob(trans, db_name=":db:"):
+    """
+    >>> e = u"I"
+    >>> f = u"は"
+    >>> prob = decode.phrase_prob(e, f, trans="en2ja", db_name=":jec_basic:")
+    >>> pprint(prob)
+    """
+    # create phrase_prob table
+    if trans not in ["en2ja", "ja2en"]:
+        raise Exception("trans argument should be either en2ja or ja2en")
+    table_name = "phrase_prob_{0}".format(trans)
+    con = sqlite3.connect(db_name)
+    cur = con.cursor()
+    try:
+        cur.execute("drop table {0}".format(table_name))
+    except sqlite3.Error:
+        print("{0} table does not exists.\n\
+              => creating a new table".format(table_name))
+    if trans == "en2ja":
+        cur.execute("""create table {0}
+                    (en TEXT, ja TEXT, prob REAL)
+                    """.format(table_name))
+    if trans == "ja2en":
+        cur.execute("""create table {0}
+                    (ja TEXT, en TEXT, prob REAL)
+                    """.format(table_name))
+    con.commit()
+
+    cur_sel = con.cursor()
+    cur_rec = con.cursor()
+    cur.execute("select ja_phrase, en_phrase, count from phrase_count")
+    for ja_p, en_p, count in cur:
+        if trans == "en2ja":
+            cur_sel.execute("""select count
+                            from phrase_count_ja where
+                            ja_phrase=?""",
+                            (ja_p,))
+            count_e_j = list(cur_sel)
+            count_e_j = count_e_j[0][0]
+            cur_rec.execute("""insert into {0} values
+                            (?, ?, ?)""".format(table_name),
+                            (en_p, ja_p, count_e_j / count))
+            print(u"phrase {0} => {1}".format(ja_p, en_p))
+        # I must implement ja2en ver.
     con.commit()
 
 
