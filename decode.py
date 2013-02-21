@@ -3,6 +3,7 @@
 
 from __future__ import division, print_function
 import sqlite3
+import math
 #from pprint import pprint
 
 
@@ -81,8 +82,9 @@ def available_phrases(fs, db_name=":db:"):
     return available
 
 
-class HypothesisBase:
+class HypothesisBase(object):
     def __init__(self,
+                 db_name,
                  sentence,
                  input_phrase,
                  output_phrase,
@@ -93,9 +95,11 @@ class HypothesisBase:
                  prev_start,
                  prev_end,
                  remain_phrases,
+                 prob,
                  prev_hypo
                  ):
 
+        self._db_name = db_name
         self._sentence = sentence
         self._input_phrase = input_phrase
         self._output_phrase = output_phrase
@@ -106,11 +110,12 @@ class HypothesisBase:
         self._prev_start = prev_start
         self._prev_end = prev_end
         self._remain_phrases = remain_phrases
+        self._prob = prob
         self._prev_hypo = prev_hypo
-        self._prob = self._cal_prob()
 
-    def _cal_prob(self):
-        return 0
+    @property
+    def db_name(self):
+        return self._db_name
 
     @property
     def sentence(self):
@@ -157,7 +162,8 @@ class HypothesisBase:
         return self._remain_phrases
 
     def __unicode__(self):
-        d = [("sentence", self._sentence),
+        d = [("db_name", self._db_name),
+             ("sentence", self._sentence),
              ("input_phrase", self._input_phrase),
              ("output_phrase", self._output_phrase),
              ("covered", self._covered),
@@ -207,21 +213,41 @@ class Hypothesis(HypothesisBase):
                  output_phrase,
                  ):
 
-        args = {"prev_hypo": prev_hypo,
+        start = input_phrase[0][0]
+        prev_end = prev_hypo.end
+        args = {"db_name": prev_hypo.db_name,
+                "prev_hypo": prev_hypo,
                 "sentence": prev_hypo.sentence,
                 "input_phrase": input_phrase,
                 "output_phrase": output_phrase,
                 "covered": prev_hypo.covered.union(set(input_phrase)),
                 "remained": prev_hypo.remained.difference(set(input_phrase)),
-                "start": input_phrase[0][0],
-                "end": input_phrase[-1][0],
+                "start": start,
+                "end": prev_end,
                 "prev_start": prev_hypo.start,
                 "prev_end": prev_hypo.end,
                 "remain_phrases": self._calc_remain_phrases(
                     input_phrase,
                     prev_hypo.remain_phrases),
+                "prob": 1
                 }
         HypothesisBase.__init__(self, **args)
+        self._prob = self._cal_prob(start - prev_end)
+
+    def _cal_phrase_prob(self):
+        input_phrase = " ".join(zip(*self._input_phrase)[1])
+        output_phrase = " ".join(self._output_phrase)
+        return phrase_prob(input_phrase, output_phrase,
+                           trans="en2ja", db_name=self._db_name)
+
+    def _cal_prob(self, dist):
+        val = self._prev_hypo.prob *\
+            self._reordering_model(0.1, dist) *\
+            self._cal_phrase_prob()
+        return val
+
+    def _reordering_model(self, alpha, dist):
+        return math.pow(alpha, math.fabs(dist))
 
     def _calc_remain_phrases(self, phrase, phrases):
         """

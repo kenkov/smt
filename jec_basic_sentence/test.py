@@ -44,6 +44,7 @@ if __name__ == '__main__':
     phrases = decode.available_phrases(fs,
                                        db_name=":jec_basic:")
     hyp0 = decode.HypothesisBase(sentence=fs,
+                                 db_name=":jec_basic:",
                                  input_phrase=(),
                                  output_phrase=(),
                                  covered=set(),
@@ -53,7 +54,8 @@ if __name__ == '__main__':
                                  prev_end=0,
                                  remained=set(enumerate(fs, 1)),
                                  remain_phrases=phrases,
-                                 prev_hypo=None)
+                                 prev_hypo=None,
+                                 prob=1)
     for phrase in hyp0.remain_phrases:
         phrase_str = u" ".join(zip(*phrase)[1])
         cur.execute("""select ja_phrase from phrase_count where
