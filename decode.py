@@ -81,41 +81,175 @@ def available_phrases(fs, db_name=":db:"):
     return available
 
 
-class Hypothesis:
-    def __init__(self, input_phrase, output_phrase, covered,
-                 start, end, remained, phrases, sentence):
+class HypothesisBase:
+    def __init__(self,
+                 sentence,
+                 input_phrase,
+                 output_phrase,
+                 covered,
+                 remained,
+                 start,
+                 end,
+                 prev_start,
+                 prev_end,
+                 remain_phrases,
+                 prev_hypo
+                 ):
 
+        self._sentence = sentence
         self._input_phrase = input_phrase
         self._output_phrase = output_phrase
-        self._start = start
-        self._end = end
         self._covered = covered
         self._remained = remained
-        self._phrases = phrases
-        self._sentence = sentence
-        self._probability = self._cal_prob()
+        self._start = start
+        self._end = end
+        self._prev_start = prev_start
+        self._prev_end = prev_end
+        self._remain_phrases = remain_phrases
+        self._prev_hypo = prev_hypo
+        self._prob = self._cal_prob()
 
     def _cal_prob(self):
         return 0
 
+    @property
+    def sentence(self):
+        return self._sentence
+
+    @property
+    def input_phrase(self):
+        return self._input_phrase
+
+    @property
+    def output_phrase(self):
+        return self._output_phrase
+
+    @property
+    def covered(self):
+        return self._covered
+
+    @property
+    def remained(self):
+        return self._remained
+
+    @property
+    def start(self):
+        return self._start
+
+    @property
+    def end(self):
+        return self._end
+
+    @property
+    def prev_start(self):
+        return self._prev_start
+
+    @property
+    def prev_end(self):
+        return self._prev_end
+
+    @property
+    def prob(self):
+        return self._prob
+
+    @property
+    def remain_phrases(self):
+        return self._remain_phrases
+
     def __unicode__(self):
-        d = {"input_phrase": self._input_phrase,
-             "output_phrase": self._output_phrase,
-             "start": self._start,
-             "end": self._end,
-             "covered": self._covered,
-             "remained": self._remained,
-             "phrases": self._phrases,
-             "sentence": self._sentence,
-             "probability": self._probability
-             }
-        return u"\n".join([k + u": " + unicode(v) for (k, v) in d.items()])
+        d = [("sentence", self._sentence),
+             ("input_phrase", self._input_phrase),
+             ("output_phrase", self._output_phrase),
+             ("covered", self._covered),
+             ("remained", self._remained),
+             ("start", self._start),
+             ("end", self._end),
+             ("prev_start", self._prev_start),
+             ("prev_end", self._prev_end),
+             ("remain_phrases", self._remain_phrases),
+             ("probability", self._prob)
+             ]
+        return u"Hypothesis Object\n" +\
+               u"\n".join([u"    " + k + u": " +
+                           unicode(v) for (k, v) in d])
 
     def __str__(self):
         return unicode(self).encode('utf-8')
 
     def __hash__(self):
         return hash(unicode(self))
+
+
+class Hypothesis(HypothesisBase):
+    """
+    Realize like the following class
+
+    >>> args = {"sentence": fs,
+    ...         "input_phrase": phrase,
+    ...         "output_phrase": output_phrase,
+    ...         "covered": hyp0.covered.union(set(phrase)),
+    ...         "remained": hyp0.remained.difference(set(phrase)),
+    ...         "start": phrase[0][0],
+    ...         "end": phrase[-1][0],
+    ...         "prev_start": hyp0.start,
+    ...         "prev_end": hyp0.end,
+    ...         "remain_phrases": remain_phrases(phrase,
+    ...                                          hyp0.remain_phrases),
+    ...         "prev_hypo": hyp0
+    ...         }
+
+    >>> hyp1 = decode.HypothesisBase(**args)
+    """
+
+    def __init__(self,
+                 prev_hypo,
+                 input_phrase,
+                 output_phrase,
+                 ):
+
+        args = {"prev_hypo": prev_hypo,
+                "sentence": prev_hypo.sentence,
+                "input_phrase": input_phrase,
+                "output_phrase": output_phrase,
+                "covered": prev_hypo.covered.union(set(input_phrase)),
+                "remained": prev_hypo.remained.difference(set(input_phrase)),
+                "start": input_phrase[0][0],
+                "end": input_phrase[-1][0],
+                "prev_start": prev_hypo.start,
+                "prev_end": prev_hypo.end,
+                "remain_phrases": self._calc_remain_phrases(
+                    input_phrase,
+                    prev_hypo.remain_phrases),
+                }
+        HypothesisBase.__init__(self, **args)
+
+    def _calc_remain_phrases(self, phrase, phrases):
+        """
+        >>> res = remain_phrases(((2, u'is'),),
+                                 set([((1, u'he'),),
+                                      ((2, u'is'),),
+                                      ((3, u'a'),),
+                                      ((2, u'is'),
+                                       (3, u'a')),
+                                      ((4, u'teacher'),)]))
+        set([((1, u'he'),), ((3, u'a'),), ((4, u'teacher'),)])
+        >>> res = remain_phrases(((2, u'is'), (3, u'a')),
+                                 set([((1, u'he'),),
+                                      ((2, u'is'),),
+                                      ((3, u'a'),),
+                                      ((2, u'is'),
+                                       (3, u'a')),
+                                      ((4, u'teacher'),)]))
+        set([((1, u'he'),), ((4, u'teacher'),)])
+        """
+        s = set()
+        for ph in phrases:
+            for p in phrase:
+                if p in ph:
+                    break
+            else:
+                s.add(ph)
+        return s
 
 
 class Stack(set):
@@ -132,15 +266,15 @@ class Stack(set):
     def get_min_hyp(self):
         pass
 
-
+"""
 def stack_decode(fs, phrases, phrase_prob, dist_prob):
     len_fs = len(fs)
     stacks = [Stack() for i in range(len_fs)]
     avail_phrases = available_phrases(fs,
                                       {fs_ph for (es_ph, fs_ph) in phrases})
-    hyp0 = Hypothesis((), (), {},
-                      0, 0, tuple(enumerate(fs, 1)),
-                      avail_phrases, ())
+    hyp0 = HypothesisBase((), (), {},
+                          0, 0, tuple(enumerate(fs, 1)),
+                          avail_phrases, ())
     stacks[0].add(hyp0)
     for i in range(len_fs):
         for hyp in stacks[i]:
@@ -158,22 +292,8 @@ def stack_decode(fs, phrases, phrase_prob, dist_prob):
                     stacks[len(new_hyp._covered)].add_hyp(new_hyp)
                     # recombine
                     # prune
+"""
 
 
 if __name__ == '__main__':
-    from phrase_extract import available_phrases
-    from pprint import pprint
-    # phrases
-    fs = "I am a teacher".split()
-    phrases = set([("I", "am"),
-                   ("a", "teacher"),
-                   ("teacher",),
-                   ("I", "am", "a", "teacher")])
-    phrases = available_phrases(fs, phrases)
-    pprint(phrases)
-    #hyp0 = Hypothesis((), (), {},
-    #                  0, 0, tuple(enumerate(fs, 1)),
-    #                  phrases, ())
-    #print(hyp0)
-    #stack = Stack()
-    #stack.add_hyp(hyp0)
+    pass
