@@ -301,10 +301,6 @@ def create_phrase_count_view(db_name=":db:"):
 
 def create_phrase_prob(trans, db_name=":db:"):
     """
-    >>> e = u"I"
-    >>> f = u"は"
-    >>> prob = decode.phrase_prob(e, f, trans="en2ja", db_name=":jec_basic:")
-    >>> pprint(prob)
     """
     # create phrase_prob table
     if trans not in ["en2ja", "ja2en"]:
@@ -338,10 +334,12 @@ def create_phrase_prob(trans, db_name=":db:"):
                             (ja_p,))
             count_e_j = list(cur_sel)
             count_e_j = count_e_j[0][0]
+            prob = count / count_e_j
             cur_rec.execute("""insert into {0} values
                             (?, ?, ?)""".format(table_name),
-                            (en_p, ja_p, count_e_j / count))
-            print(u"phrase {0} => {1}".format(ja_p, en_p))
+                            (en_p, ja_p, prob))
+            print(u"{0} => {1} : {2}".format(ja_p, en_p, prob))
+        con.commit()
         # I must implement ja2en ver.
     con.commit()
 

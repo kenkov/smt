@@ -38,24 +38,26 @@ def remain_phrases(phrase, phrases):
 
 if __name__ == '__main__':
     import sqlite3
-    con = sqlite3.connect(":jec_basic:")
+    db_name = ":jec_basic:"
+    con = sqlite3.connect(db_name)
     cur = con.cursor()
     fs = u"he is a teacher".split()
-    phrases = decode.available_phrases(fs,
-                                       db_name=":jec_basic:")
-    hyp0 = decode.HypothesisBase(sentence=fs,
-                                 db_name=":jec_basic:",
-                                 input_phrase=(),
-                                 output_phrase=(),
-                                 covered=set(),
-                                 start=0,
-                                 end=0,
-                                 prev_start=0,
-                                 prev_end=0,
-                                 remained=set(enumerate(fs, 1)),
-                                 remain_phrases=phrases,
-                                 prev_hypo=None,
-                                 prob=1)
+    #phrases = decode.available_phrases(fs,
+    #                                   db_name=":jec_basic:")
+    #hyp0 = decode.HypothesisBase(sentence=fs,
+    #                             db_name=":jec_basic:",
+    #                             input_phrase=(),
+    #                             output_phrase=(),
+    #                             covered=set(),
+    #                             start=0,
+    #                             end=0,
+    #                             prev_start=0,
+    #                             prev_end=0,
+    #                             remained=set(enumerate(fs, 1)),
+    #                             remain_phrases=phrases,
+    #                             prev_hypo=None,
+    #                             prob=1)
+    hyp0 = decode.create_empty_hypothesis(fs, db_name=db_name)
     for phrase in hyp0.remain_phrases:
         phrase_str = u" ".join(zip(*phrase)[1])
         cur.execute("""select ja_phrase from phrase_count where

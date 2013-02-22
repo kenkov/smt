@@ -9,51 +9,26 @@ import math
 
 def phrase_prob(f, e, trans, db_name=":db:"):
     """
-    >>> e = u"I"
-    >>> f = u"は"
+    >>> e = u"I am"
+    >>> f = u"私 は"
     >>> prob = decode.phrase_prob(e, f, trans="en2ja", db_name=":jec_basic:")
-    >>> pprint(prob)
     """
     if trans not in ["en2ja", "ja2en"]:
         raise Exception("trans argument should be either en2ja or ja2en")
     con = sqlite3.connect(db_name)
     cur = con.cursor()
     if trans == "en2ja":
-        cur.execute("""select count
-                    from phrase_count where en_phrase=? and
-                    ja_phrase=?""",
+        cur.execute("""select prob
+                    from phrase_prob_en2ja where
+                    en_phrase=? and ja_phrase=?""",
                     (f, e))
-        count_e_f = list(cur)
-        if count_e_f:
-            count_e_f = count_e_f[0][0]
-        cur.execute("""select count
-                    from phrase_count_ja where
-                    ja_phrase=?""",
-                    (e,))
-        count_e = list(cur)
-        if count_e:
-            count_e = count_e[0][0]
-    elif trans == "ja2en":
-        cur.execute("""select count
-                    from phrase_count where en_phrase=? and
-                    ja_phrase=?""",
-                    (e, f))
-        count_e_f = list(cur)
-        if count_e_f:
-            count_e_f = count_e_f[0][0]
-        cur.execute("""select count
-                    from phrase_count_en where
-                    en_phrase=?""",
-                    (e,))
-        count_e = list(cur)
-        if count_e:
-            count_e = count_e[0][0]
-    # smoothing
-    if (not count_e_f) or (not count_e):
-        print("not found", count_e_f, count_e)
-        return 1e-10
+        ans = list(cur)
+    if ans:
+        return ans[0][0]
     else:
-        return count_e_f / count_e
+        # define the default value
+        # in the case no mached probability is found.
+        return 1.0e-10
 
 
 def available_phrases(fs, db_name=":db:"):
@@ -175,6 +150,7 @@ class HypothesisBase(object):
              ("prev_end", self._prev_end),
              ("remain_phrases", self._remain_phrases),
              ("probability", self._prob)
+             #("prev_hypo", ""),
              ]
         return u"Hypothesis Object\n" +\
                u"\n".join([u"    " + k + u": " +
@@ -215,6 +191,8 @@ class Hypothesis(HypothesisBase):
                  ):
 
         start = input_phrase[0][0]
+        end = input_phrase[-1][0]
+        prev_start = prev_hypo.start
         prev_end = prev_hypo.end
         args = {"db_name": prev_hypo.db_name,
                 "prev_hypo": prev_hypo,
@@ -224,15 +202,18 @@ class Hypothesis(HypothesisBase):
                 "covered": prev_hypo.covered.union(set(input_phrase)),
                 "remained": prev_hypo.remained.difference(set(input_phrase)),
                 "start": start,
-                "end": prev_end,
-                "prev_start": prev_hypo.start,
-                "prev_end": prev_hypo.end,
+                "end": end,
+                "prev_start": prev_start,
+                "prev_end": prev_end,
                 "remain_phrases": self._calc_remain_phrases(
                     input_phrase,
                     prev_hypo.remain_phrases),
+                # set provability for a moment,
+                # The exact probability is set below
                 "prob": 1
                 }
         HypothesisBase.__init__(self, **args)
+        # set the exact probability
         self._prob = self._cal_prob(start - prev_end)
 
     def _cal_phrase_prob(self):
@@ -279,6 +260,25 @@ class Hypothesis(HypothesisBase):
         return s
 
 
+def create_empty_hypothesis(fs, db_name):
+    phrases = available_phrases(fs,
+                                db_name=db_name)
+    hyp0 = HypothesisBase(sentence=fs,
+                          db_name=db_name,
+                          input_phrase=(),
+                          output_phrase=(),
+                          covered=set(),
+                          start=0,
+                          end=0,
+                          prev_start=0,
+                          prev_end=0,
+                          remained=set(enumerate(fs, 1)),
+                          remain_phrases=phrases,
+                          prev_hypo=None,
+                          prob=1)
+    return hyp0
+
+
 class Stack(set):
     def __init__(self, size=100):
         set.__init__(self)
@@ -292,6 +292,7 @@ class Stack(set):
 
     def get_min_hyp(self):
         pass
+
 
 """
 def stack_decode(fs, phrases, phrase_prob, dist_prob):

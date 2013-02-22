@@ -40,6 +40,7 @@ def excel_convert(db_name=":jec_basic:"):
 
 
 if __name__ == '__main__':
+    pass
     # test
     #limit = 10
     #loop_count = 10
@@ -55,4 +56,4 @@ if __name__ == '__main__':
     #                loop_count=loop_count)
     #create_phrase_db(db_name=db_name, limit=limit)
     #create_phrase_count_view(db_name=":test:")
-    create_phrase_prob(trans="en2ja", db_name=":jec_basic:")
+    #create_phrase_prob(trans="en2ja", db_name=":jec_basic:")
