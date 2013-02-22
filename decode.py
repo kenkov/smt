@@ -20,7 +20,7 @@ def phrase_prob(f, e, trans, db_name=":db:"):
     if trans == "en2ja":
         cur.execute("""select prob
                     from phrase_prob_en2ja where
-                    en_phrase=? and ja_phrase=?""",
+                    en=? and ja=?""",
                     (f, e))
         ans = list(cur)
     if ans:
@@ -287,40 +287,42 @@ class Stack(set):
 
     def add_hyp(self, hyp):
         self.add(hyp)
-        #if len(self) > self._size:
-        #    self.remove(self.get_min_hyp())
+        if len(self) > self._size:
+            self.remove(self._get_min_hyp())
 
-    def get_min_hyp(self):
-        pass
+    def _get_min_hyp(self):
+        # set value which is more than 1
+        lst = list(self)
+        mn = lst[0]
+        for item in self:
+            if item.prob < mn.prob:
+                mn = item
+        return mn
 
 
-"""
-def stack_decode(fs, phrases, phrase_prob, dist_prob):
+def stack_decoder(fs, db_name):
+    con = sqlite3.connect(db_name)
+    cur = con.cursor()
     len_fs = len(fs)
-    stacks = [Stack() for i in range(len_fs)]
-    avail_phrases = available_phrases(fs,
-                                      {fs_ph for (es_ph, fs_ph) in phrases})
-    hyp0 = HypothesisBase((), (), {},
-                          0, 0, tuple(enumerate(fs, 1)),
-                          avail_phrases, ())
-    stacks[0].add(hyp0)
-    for i in range(len_fs):
-        for hyp in stacks[i]:
-            for phrase in hyp._phrases:
-                output_phrases = {outpt for outpt, inpt in phrases if
-                                  zip(*phrase)[1] == inpt}
-                for output_phrase in output_phrases:
-                    new_hyp = Hypothesis(phrase, output_phrase,
-                                         hyp._covered + phrase,
-                                         phrase[0][0],
-                                         phrase[-1][0],
-                                         None,
-                                         None,
-                                         None)
-                    stacks[len(new_hyp._covered)].add_hyp(new_hyp)
-                    # recombine
-                    # prune
-"""
+    stacks = [Stack() for i in range(len_fs+1)]
+    hyp0 = create_empty_hypothesis(fs, db_name=db_name)
+    stacks[0].add_hyp(hyp0)
+    for i, stack in enumerate(stacks):
+        for hyp in stack:
+            for phrase in hyp.remain_phrases:
+                phrase_str = u" ".join(zip(*phrase)[1])
+                cur.execute("""select ja_phrase from phrase_count where
+                            en_phrase=?""",
+                            (phrase_str,))
+                for output_phrase in cur:
+                    print("calculating\n  {0} = {1}\n  in stack {2}".format(
+                          phrase, output_phrase, i))
+                    output_phrase = output_phrase[0]
+                    new_hyp = Hypothesis(prev_hypo=hyp,
+                                         input_phrase=phrase,
+                                         output_phrase=output_phrase)
+                    stacks[len(new_hyp.covered)].add(new_hyp)
+    return stacks
 
 
 if __name__ == '__main__':
