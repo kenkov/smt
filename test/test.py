@@ -3,14 +3,14 @@
 
 import unittest
 import collections
-from smt.ibmmodel1 import train
-from smt.ibmmodel2 import viterbi_alignment
-from smt.word_alignment import _alignment
-from smt.word_alignment import symmetrization
-from smt.phrase_extract import extract
-from smt.phrase_extract import phrase_extract
-from smt.phrase_extract import available_phrases
-from smt.utility import mkcorpus
+from ibmmodel1 import train
+from ibmmodel2 import viterbi_alignment
+from word_alignment import _alignment
+from word_alignment import symmetrization
+from phrase_extract import extract
+from phrase_extract import phrase_extract
+from phrase_extract import available_phrases
+from utility import mkcorpus
 
 
 class WordAlignmentTest(unittest.TestCase):
