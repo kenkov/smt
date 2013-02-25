@@ -4,10 +4,10 @@
 from __future__ import division, print_function
 import sqlite3
 import collections
-import ibmmodel2
-import word_alignment
+from smt.ibmmodel import ibmmodel2
+from smt.phrase import word_alignment
+from smt.phrase import phrase_extract
 import keitaiso
-import phrase_extract
 from progressline import ProgressLine
 
 
@@ -85,8 +85,8 @@ def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
     p = ProgressLine(0.12, title='IBM Model learning...')
     p.start()
     t, a = ibmmodel2.train(sentences=create_corpus(trans,
-                                                    db_name=db_name,
-                                                    limit=limit),
+                                                   db_name=db_name,
+                                                   limit=limit),
                            loop_count=loop_count)
     p.stop()
     # insert
