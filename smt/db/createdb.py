@@ -30,7 +30,7 @@ def create_corpus(trans, db_name=":db:", limit=None):
     else:
         raise Exception("Please select en2ja or ja2en for limit argument")
 
-    sent_pairs = []
+    sentences = []
     # use keitaiso.str2wakati for Japanese
     # use identity function for English
     if trans == "en2ja":
@@ -43,10 +43,10 @@ def create_corpus(trans, db_name=":db:", limit=None):
     for item in cur:
         _to = _to_func(item[0])
         _from = _from_func(item[1])
-        sent_pairs.append((_to, _from))
+        sentences.append((_to, _from))
 
     con.close()
-    return sent_pairs
+    return sentences
 
 
 def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
@@ -84,7 +84,7 @@ def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
     # IBM learning
     p = ProgressLine(0.12, title='IBM Model learning...')
     p.start()
-    t, a = ibmmodel2.train(sent_pairs=create_corpus(trans,
+    t, a = ibmmodel2.train(sentences=create_corpus(trans,
                                                     db_name=db_name,
                                                     limit=limit),
                            loop_count=loop_count)
@@ -164,13 +164,13 @@ def db_show_matrix(es, fs, trans, db_name=":db:"):
     s|           |
      |           |
      -------------
-    >>> sent_pairs = [("僕 は 男 です", "I am a man"),
+    >>> sentences = [("僕 は 男 です", "I am a man"),
                       ("私 は 女 です", "I am a girl"),
                       ("私 は 先生 です", "I am a teacher"),
                       ("彼女 は 先生 です", "She is a teacher"),
                       ("彼 は 先生 です", "He is a teacher"),
                       ]
-    >>> t, a = train(sent_pairs, loop_count=1000)
+    >>> t, a = train(sentences, loop_count=1000)
     >>> args = ("私 は 先生 です".split(), "I am a teacher".split(), t, a)
     |x| | | |
     | | |x| |
