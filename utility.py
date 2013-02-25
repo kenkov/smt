@@ -4,7 +4,7 @@
 from __future__ import division, print_function
 
 
-def mkcorpus(sentenses):
+def mkcorpus(sentences):
     """
     >>> sent_pairs = [("僕 は 男 です", "I am a man"),
                       ("私 は 女 です", "I am a girl"),
@@ -39,7 +39,7 @@ def mkcorpus(sentenses):
        '\xe3\x81\xa7\xe3\x81\x99'],
       ['He', 'is', 'a', 'teacher'])]
     """
-    return [(es.split(), fs.split()) for (es, fs) in sentenses]
+    return [(es.split(), fs.split()) for (es, fs) in sentences]
 
 
 def matrix(m, n, lst):

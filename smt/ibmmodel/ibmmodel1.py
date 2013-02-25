@@ -3,10 +3,10 @@
 
 from __future__ import division, print_function
 from operator import itemgetter
-import math
 import collections
 from pprint import pprint
 import itertools
+import utility
 
 
 def _constant_factory(value):
@@ -43,8 +43,8 @@ def _train(corpus, loop_count=1000):
     return t
 
 
-def train(sent_pairs, loop_count=1000):
-    corpus = [(es.split(), fs.split()) for (es, fs) in sent_pairs]
+def train(sentences, loop_count=1000):
+    corpus = utility.mkcorpus(sentences)
     return _train(corpus, loop_count)
 
 
@@ -53,30 +53,30 @@ def _pprint(tbl):
         print("p({e}|{f}) = {v}".format(e=e, f=f, v=v))
 
 
-def probability(t, es, fs, epsilon=1):
-    _es = es.split()
-    _fs = fs.split()
-    prod = 1
-    for e in _es:
-        t_sum = 0
-        for f in _fs:
-            t_sum += t[(e, f)]
-        prod *= t_sum
-    return epsilon * prod / math.pow((len(_fs)), len(_es))
+#def probability(t, es, fs, epsilon=1):
+#    _es = es.split()
+#    _fs = fs.split()
+#    prod = 1
+#    for e in _es:
+#        t_sum = 0
+#        for f in _fs:
+#            t_sum += t[(e, f)]
+#        prod *= t_sum
+#    return epsilon * prod / math.pow((len(_fs)), len(_es))
 
 
 if __name__ == '__main__':
-    sent_pairs = [("the house", "das Haus"),
-                  ("the book", "das Buch"),
-                  ("a book", "ein Buch"),
-                  ]
-    #sent_pairs = [("day", "1 2"),
+    sentences = [("the house", "das Haus"),
+                 ("the book", "das Buch"),
+                 ("a book", "ein Buch"),
+                 ]
+    #sentences = [("day", "1 2"),
     #              ("after", "1 2 3")]
-    t = train(sent_pairs, loop_count=0)
+    t = train(sentences, loop_count=0)
     pprint(t)
-    t = train(sent_pairs, loop_count=1)
+    t = train(sentences, loop_count=1)
     pprint(t)
-    t = train(sent_pairs, loop_count=2)
+    t = train(sentences, loop_count=2)
     pprint(t)
-    t = train(sent_pairs, loop_count=3)
+    t = train(sentences, loop_count=3)
     pprint(t)

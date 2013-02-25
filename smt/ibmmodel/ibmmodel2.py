@@ -4,7 +4,7 @@
 from __future__ import division, print_function
 import collections
 import ibmmodel1
-from utility import matrix
+import utility
 
 
 class _keydefaultdict(collections.defaultdict):
@@ -67,8 +67,8 @@ def _train(corpus, loop_count=1000):
     return (t, a)
 
 
-def train(sent_pairs, loop_count=1000):
-    corpus = [(es.split(), fs.split()) for (es, fs) in sent_pairs]
+def train(sentences, loop_count=1000):
+    corpus = utility.mkcorpus(sentences)
     return _train(corpus, loop_count)
 
 
@@ -101,13 +101,13 @@ def show_matrix(es, fs, t, a):
     s|           |
      |           |
      -------------
-    >>> sent_pairs = [("僕 は 男 です", "I am a man"),
-                      ("私 は 女 です", "I am a girl"),
-                      ("私 は 先生 です", "I am a teacher"),
-                      ("彼女 は 先生 です", "She is a teacher"),
-                      ("彼 は 先生 です", "He is a teacher"),
-                      ]
-    >>> t, a = train(sent_pairs, loop_count=1000)
+    >>> sentences = [("僕 は 男 です", "I am a man"),
+                     ("私 は 女 です", "I am a girl"),
+                     ("私 は 先生 です", "I am a teacher"),
+                     ("彼女 は 先生 です", "She is a teacher"),
+                     ("彼 は 先生 です", "He is a teacher"),
+                     ]
+    >>> t, a = train(sentences, loop_count=1000)
     >>> args = ("私 は 先生 です".split(), "I am a teacher".split(), t, a)
     |x| | | |
     | | |x| |
@@ -117,21 +117,21 @@ def show_matrix(es, fs, t, a):
     max_a = viterbi_alignment(es, fs, t, a).items()
     m = len(es)
     n = len(fs)
-    return matrix(m, n, max_a)
+    return utility.matrix(m, n, max_a)
 
 
 if __name__ == '__main__':
-    #sent_pairs = [("the house", "das Haus"),
+    #sentences = [("the house", "das Haus"),
     #              ("the book", "das Buch"),
     #              ("a book", "ein Buch"),
     #              ]
-    print(matrix(2, 3, [(1, 1), (2, 3)]))
-    sent_pairs = [("僕 は 男 です", "I am a man"),
+    print(utility.matrix(2, 3, [(1, 1), (2, 3)]))
+    sentences = [("僕 は 男 です", "I am a man"),
                   ("私 は 女 です", "I am a girl"),
                   ("私 は 先生 です", "I am a teacher"),
                   ("彼女 は 先生 です", "She is a teacher"),
                   ("彼 は 先生 です", "He is a teacher"),
                   ]
-    t, a = train(sent_pairs, loop_count=1000)
+    t, a = train(sentences, loop_count=1000)
     args = ("私 は 先生 です".split(), "I am a teacher".split(), t, a)
     print(show_matrix(*args))

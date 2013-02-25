@@ -49,13 +49,6 @@ def create_corpus(trans, db_name=":db:", limit=None):
     return sent_pairs
 
 
-#def benchmark_ibmmodel2():
-#    sent_pairs = create_corpus()
-#    with Benchmarker(width=20) as bm:
-#        with bm('loop_count=100, limit=1000'):
-#            t, a = ibmmodel2.train(sent_pairs, loop_count=100)
-
-
 def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
     if not trans in ["en2ja", "ja2en"]:
         raise Exception("please select en2ja or ja2en for trans argmument")
