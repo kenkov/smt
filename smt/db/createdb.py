@@ -417,7 +417,7 @@ def create_phrase_prob(transfrom=2, transto=1, db="sqlite:///:memory:"):
     con.commit()
 
 
-def createdb(db=":test:",
+def createdb(db=":memory:",
              lang1method=lambda x: x,
              lang2method=lambda x: x,
              init_val=1.0e-10,

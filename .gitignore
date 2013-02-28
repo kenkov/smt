@@ -2,6 +2,7 @@ smt.egg-info/
 *.pyc
 terminal.py
 twitter/:twitter:
+twitter/:phrasetwitter:
 twitter/test.txt
 jec_basic_sentence/:jec_basic:
 jec_basic_sentence/:jec_basic:-journal

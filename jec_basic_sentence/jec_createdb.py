@@ -7,15 +7,11 @@ import xlrd
 from smt.db.createdb import createdb
 
 # import SQLAlchemy
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # import smt module
 from smt.db.createdb import Sentence
-
-
-_Base = declarative_base()
 
 
 def excel_convert(db="sqlite:///:memory:",

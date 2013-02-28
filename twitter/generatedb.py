@@ -5,6 +5,7 @@
 # Last Updated on 2012/04/20 03:38:36 .
 #
 import sqlite3
+from progressline import ProgressLine
 
 
 def _to_dict(tup):
@@ -47,18 +48,18 @@ def reply_search(db=":twitter:"):
     ins_cur = con.cursor()
     cur = con.cursor()
     cur.execute("select * from reply")
-    for item in cur:
-        c = con.cursor()
-        c.execute("select * from twitter where id=?",
-                  (_to_dict(item)["in_reply_to_status_id"],))
-        for to_item in c:
-            #print u"{_from}\n   {to}".format(_from=_to_dict(to_item)["text"],
-            #                                 to=_to_dict(item)["text"])
-            ins_cur.execute("insert into conversation values (?, ?)",
-                            (_to_dict(to_item)["text"],
-                             _to_dict(item)["text"]))
-    con.commit()
-    ins_cur.close()
+    with ProgressLine(0.12, title='Inserting items into {0} table...'.format(
+            "conversatoin")):
+        for item in cur:
+            c = con.cursor()
+            c.execute("select * from twitter where id=?",
+                      (_to_dict(item)["in_reply_to_status_id"],))
+            for to_item in c:
+                ins_cur.execute("insert into conversation values (?, ?)",
+                                (_to_dict(to_item)["text"],
+                                 _to_dict(item)["text"]))
+        con.commit()
+        ins_cur.close()
 
 if __name__ == "__main__":
     create_reply_view(":twitter:")
