@@ -2,109 +2,124 @@
 # coding:utf-8
 
 from __future__ import division, print_function
-import sqlite3
 import collections
+import utility
 from smt.ibmmodel import ibmmodel2
 from smt.phrase import word_alignment
 from smt.phrase import phrase_extract
-import keitaiso
 from progressline import ProgressLine
+# import SQLAlchemy
+import sqlalchemy
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine
+from sqlalchemy import Column, TEXT, REAL, INTEGER
+from sqlalchemy.orm import sessionmaker
+import sqlite3
 
 
-# create train db
-def create_corpus(trans, db_name=":db:", limit=None):
-    con = sqlite3.connect(db_name)
-    cur = con.cursor()
-    if trans == "en2ja":
-        if limit:
-            cur.execute("select ja, en from sentence limit ?",
-                        (limit,))
-        else:
-            cur.execute("select ja, en from sentence")
-    elif trans == "ja2en":
-        if limit:
-            cur.execute("select en, ja from sentence limit ?",
-                        (limit,))
-        else:
-            cur.execute("select en, ja from sentence")
-    else:
-        raise Exception("Please select en2ja or ja2en for limit argument")
-
-    sentences = []
-    # use keitaiso.str2wakati for Japanese
-    # use identity function for English
-    if trans == "en2ja":
-        _to_func = keitaiso.str2wakati
-        _from_func = lambda x: x
-    elif trans == "ja2en":
-        _to_func = lambda x: x
-        _from_func = keitaiso.str2wakati
-
-    for item in cur:
-        _to = _to_func(item[0])
-        _from = _from_func(item[1])
-        sentences.append((_to, _from))
-
-    con.close()
-    return sentences
+_Base = declarative_base()
 
 
-def create_train_db(trans, db_name=":db:", limit=None, loop_count=1000):
-    if not trans in ["en2ja", "ja2en"]:
-        raise Exception("please select en2ja or ja2en for trans argmument")
+class Sentence(_Base):
+    __tablename__ = 'sentence'
+    id = Column(INTEGER, primary_key=True)
+    lang1 = Column(TEXT)
+    lang2 = Column(TEXT)
 
-    table_prefix = trans + "_"
-    con = sqlite3.connect(db_name)
-    cur = con.cursor()
+
+def create_corpus(db="sqlite:///:memory:",
+                  lang1method=lambda x: x,
+                  lang2method=lambda x: x,
+                  limit=None):
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    query = session.query(Sentence)[:limit] if limit \
+        else session.query(Sentence)
+
+    for item in query:
+        yield {"lang1": lang1method(item.lang1),
+               "lang2": lang2method(item.lang2)}
+
+
+def create_train_db(transfrom=2,
+                    transto=1,
+                    lang1method=lambda x: x,
+                    lang2method=lambda x: x,
+                    db="sqlite:///:memory:",
+                    limit=None,
+                    loop_count=1000):
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    table_prefix = "from{0}to{1}".format(transfrom, transto)
+    wordprob_tablename = table_prefix + "_" + "wordprob"
+    wordalign_tablename = table_prefix + "_" + "wordalign"
+
+    _BaseProb = declarative_base()
+    _BaseAlign = declarative_base()
+
+    class WordProbability(_BaseProb):
+        __tablename__ = wordprob_tablename
+        id = Column(INTEGER, primary_key=True)
+        transto = Column(TEXT)
+        transfrom = Column(TEXT)
+        prob = Column(REAL)
+
+    class WordAlignment(_BaseAlign):
+        __tablename__ = wordalign_tablename
+        id = Column(INTEGER, primary_key=True)
+        from_pos = Column(INTEGER)
+        to_pos = Column(INTEGER)
+        to_len = Column(INTEGER)
+        from_len = Column(INTEGER)
+        prob = Column(REAL)
 
     # create table for word probability
-    prob_tablename = table_prefix + "wordprob"
-    try:
-        cur.execute("drop table {0}".format(prob_tablename))
-    except sqlite3.Error:
-        print("{0} table does not exists.\n\
-              => creating a new table".format(prob_tablename))
-    cur.execute("create table {0}\
-                (to_ TEXT, from_ TEXT, prob REAL)".format(prob_tablename))
-    con.commit()
+    WordProbability.__table__.drop(engine, checkfirst=True)
+    WordProbability.__table__.create(engine)
+    print("created table: {0}to{1}_wordprob".format(transfrom, transto))
 
-    # create table for word alignment
-    align_tablename = table_prefix + "wordalign"
-    try:
-        cur.execute("drop table {0}".format(align_tablename))
-    except sqlite3.Error:
-        print("{0} table does not exists.\n\
-              => creating a new table".format(align_tablename))
-    cur.execute("create table {0}\
-                (from_pos INTEGER, to_pos INTEGER,\
-                to_len INTEGER, from_len INTEGER, prob\
-                REAL)".format(align_tablename))
-    con.commit()
+    # create table for alignment probability
+    WordAlignment.__table__.drop(engine, checkfirst=True)
+    WordAlignment.__table__.create(engine)
+    print("created table: {0}to{1}_wordalign".format(transfrom, transto))
 
     # IBM learning
-    p = ProgressLine(0.12, title='IBM Model learning...')
-    p.start()
-    t, a = ibmmodel2.train(sentences=create_corpus(trans,
-                                                   db_name=db_name,
-                                                   limit=limit),
-                           loop_count=loop_count)
-    p.stop()
+    with ProgressLine(0.12, title='IBM Model learning...'):
+        # check arguments for carete_corpus
+        corpus = create_corpus(db=db, limit=limit,
+                               lang1method=lang1method,
+                               lang2method=lang2method)
+        sentences = [(item["lang{0}".format(transto)],
+                      item["lang{0}".format(transfrom)])
+                     for item in corpus]
+        t, a = ibmmodel2.train(sentences=sentences,
+                               loop_count=loop_count)
     # insert
-    p = ProgressLine(0.12, title='inserting items into database')
-    for (_to, _from), prob in t.items():
-        cur.execute("insert into {0}\
-                     values (?, ?, ?)".format(prob_tablename),
-                    (_to, _from, prob))
-    for tpl, prob in a.items():
-        cur.execute("insert into {0} values\
-                    (?, ?, ?, ?, ?)".format(align_tablename),
-                    tpl + (prob,))
-    con.commit()
-    p.stop()
+    with ProgressLine(0.12, title='Inserting items into database...'):
+        for (_to, _from), prob in t.items():
+            session.add(WordProbability(transto=_to,
+                                        transfrom=_from,
+                                        prob=prob))
+        for (from_pos, to_pos, to_len, from_len), prob in a.items():
+            session.add(WordAlignment(from_pos=from_pos,
+                                      to_pos=to_pos,
+                                      to_len=to_len,
+                                      from_len=from_len,
+                                      prob=prob))
+        session.commit()
 
 
-# create phrase db
-def db_viterbi_alignment(es, fs, trans, db_name=":db:", init_val=0.00001):
+def db_viterbi_alignment(es, fs,
+                         transfrom=2,
+                         transto=1,
+                         db="sqlite:///:memory:",
+                         init_val=1.0e-10):
     """
     Calculating viterbi_alignment using specified database.
 
@@ -112,31 +127,53 @@ def db_viterbi_alignment(es, fs, trans, db_name=":db:", init_val=0.00001):
         trans:
             it can take "en2ja" or "ja2en"
     """
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
-    def get_wordprob(e, f, trans, db_name=":db:"):
-        table_name = trans + "_wordprob"
-        con = sqlite3.connect(db_name)
-        cur = con.cursor()
-        cur.execute(u'select prob from {0}\
-                    where to_=? and from_=?'.format(table_name),
-                    (e, f))
-        res = list(cur)
-        return res[0][0] if res else init_val
+    table_prefix = "from{0}to{1}".format(transfrom, transto)
+    wordprob_tablename = table_prefix + "_" + "wordprob"
+    wordalign_tablename = table_prefix + "_" + "wordalign"
 
-    def get_wordalign(i, j, l_e, l_f, trans, db_name=":db:",
-                      init_val=0.00001):
-        table_name = trans + "_wordalign"
-        con = sqlite3.connect(db_name)
-        cur = con.cursor()
-        cur.execute(u'select prob from {0}\
-                    where\
-                    from_pos=? and\
-                    to_pos=? and\
-                    to_len=? and\
-                    from_len=?'.format(table_name),
-                    (i, j, l_e, l_f))
-        res = list(cur)
-        return res[0][0] if res else init_val
+    _BaseProb = declarative_base()
+    _BaseAlign = declarative_base()
+
+    class WordProbability(_BaseProb):
+        __tablename__ = wordprob_tablename
+        id = Column(INTEGER, primary_key=True)
+        transto = Column(TEXT)
+        transfrom = Column(TEXT)
+        prob = Column(REAL)
+
+    class WordAlignment(_BaseAlign):
+        __tablename__ = wordalign_tablename
+        id = Column(INTEGER, primary_key=True)
+        from_pos = Column(INTEGER)
+        to_pos = Column(INTEGER)
+        to_len = Column(INTEGER)
+        from_len = Column(INTEGER)
+        prob = Column(REAL)
+
+    def get_wordprob(e, f, init_val=1.0e-10):
+
+        query = session.query(WordProbability).filter_by(transto=e,
+                                                         transfrom=f)
+        try:
+            return query.one().prob
+        except sqlalchemy.orm.exc.NoResultFound:
+            return init_val
+
+    def get_wordalign(i, j, l_e, l_f, init_val=1.0e-10):
+
+        query = session.query(WordAlignment).filter_by(from_pos=i,
+                                                       to_pos=j,
+                                                       to_len=l_e,
+                                                       from_len=l_f)
+        try:
+            return query.one().prob
+        except sqlalchemy.orm.exc.NoResultFound:
+            return init_val
 
     # algorithm
     max_a = collections.defaultdict(float)
@@ -145,9 +182,8 @@ def db_viterbi_alignment(es, fs, trans, db_name=":db:", init_val=0.00001):
     for (j, e) in enumerate(es, 1):
         current_max = (0, -1)
         for (i, f) in enumerate(fs, 1):
-            val = get_wordprob(e, f, db_name=db_name, trans=trans) *\
-                get_wordalign(i, j, l_e, l_f, db_name=db_name,
-                              trans=trans)
+            val = get_wordprob(e, f, init_val=init_val) *\
+                get_wordalign(i, j, l_e, l_f, init_val=init_val)
             # select the first one among the maximum candidates
             if current_max[1] < val:
                 current_max = (i, val)
@@ -155,7 +191,11 @@ def db_viterbi_alignment(es, fs, trans, db_name=":db:", init_val=0.00001):
     return max_a
 
 
-def db_show_matrix(es, fs, trans, db_name=":db:"):
+def db_show_matrix(es, fs,
+                   transfrom=2,
+                   transto=1,
+                   db="sqlite:///:memory:",
+                   init_val=0.00001):
     '''
     print matrix according to viterbi alignment like
           fs
@@ -177,76 +217,107 @@ def db_show_matrix(es, fs, trans, db_name=":db:"):
     | | | |x|
     | | |x| |
     '''
-    max_a = db_viterbi_alignment(es, fs, trans=trans,
-                                 db_name=db_name).items()
+    max_a = db_viterbi_alignment(es, fs,
+                                 transfrom=transfrom,
+                                 transto=transto,
+                                 db=db,
+                                 init_val=init_val).items()
     m = len(es)
     n = len(fs)
-    return ibmmodel2.matrix(m, n, max_a)
+    return utility.matrix(m, n, max_a)
 
 
-def _db_symmetrization(es, fs, db_name=":db:"):
+def _db_symmetrization(lang1s, lang2s,
+                       init_val=1.0e-10,
+                       db="sqlite:///:memory:"):
     '''
-    calculating symmetrization of word alignment
-    translationing from English to Japanese.
-
-    Arguments:
-        en: Japanese
-        fs: English
     '''
-    f2e = db_viterbi_alignment(es, fs, trans="en2ja",
-                               db_name=db_name).items()
-    e2f = db_viterbi_alignment(fs, es, trans="ja2en",
-                               db_name=db_name).items()
-    return word_alignment.alignment(es, fs, e2f, f2e)
+    transfrom = 2
+    transto = 1
+    trans = db_viterbi_alignment(lang1s, lang2s,
+                                 transfrom=transfrom,
+                                 transto=transto,
+                                 db=db,
+                                 init_val=init_val).items()
+    rev_trans = db_viterbi_alignment(lang2s, lang1s,
+                                     transfrom=transto,
+                                     transto=transfrom,
+                                     db=db,
+                                     init_val=init_val).items()
+    return word_alignment.alignment(lang1s, lang2s, trans, rev_trans)
 
 
-def db_phrase_extract(es, fs, db_name=":db:"):
-    ja = keitaiso.str2wakati(es).split()
-    en = fs.split()
-    alignment = _db_symmetrization(ja, en,
-                                   db_name=db_name)
-    return phrase_extract.phrase_extract(ja, en, alignment)
+def db_phrase_extract(lang1, lang2,
+                      lang1method=lambda x: x,
+                      lang2method=lambda x: x,
+                      init_val=1.0e-10,
+                      db="sqlite:///:memory:"):
+    lang1s = lang1method(lang1).split()
+    lang2s = lang1method(lang2).split()
+    alignment = _db_symmetrization(lang1s, lang2s,
+                                   init_val=init_val,
+                                   db=db)
+    return phrase_extract.phrase_extract(lang1s, lang2s, alignment)
 
 
-def create_phrase_db(db_name=":db:", limit=None):
-    # create table
+def create_phrase_db(limit=None,
+                     lang1method=lambda x: x,
+                     lang2method=lambda x: x,
+                     init_val=1.0e-10,
+                     db="sqlite:///:memory:"):
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
     table_name = "phrase"
-    con = sqlite3.connect(db_name)
-    cur = con.cursor()
-    try:
-        cur.execute("drop table {0}".format(table_name))
-    except sqlite3.Error:
-        print("{0} table does not exists.\
-              creating a new table".format(table_name))
-    cur.execute("create table {0}\
-                (ja_phrase TEXT, en_phrase TEXT)".format(table_name))
-    con.commit()
 
-    cur_loop = con.cursor()
-    if limit:
-        cur_loop.execute("select ja, en from sentence limit ?",
-                         (limit,))
-    else:
-        cur_loop.execute("select ja, en from sentence")
+    _Base = declarative_base()
 
-    print("extracting phrases...")
-    for ja, en in cur_loop:
-        print("  ", ja, en)
-        for ja_phrase, en_phrase in db_phrase_extract(ja, en,
-                                                      db_name=db_name):
-            ja_p = u" ".join(ja_phrase)
-            en_p = u" ".join(en_phrase)
-            cur.execute("insert into {0} values\
-                        (?, ?)".format(table_name),
-                        (ja_p, en_p))
-    print("extracting phrases done")
-    con.commit()
+    class Sentence(_Base):
+        __tablename__ = 'sentence'
+        id = Column(INTEGER, primary_key=True)
+        lang1 = Column(TEXT)
+        lang2 = Column(TEXT)
+
+    _BasePhrase = declarative_base()
+
+    class Phrase(_BasePhrase):
+        __tablename__ = table_name
+        id = Column(INTEGER, primary_key=True)
+        lang1p = Column(TEXT)
+        lang2p = Column(TEXT)
+
+    # create table for word probability
+    Phrase.__table__.drop(engine, checkfirst=True)
+    Phrase.__table__.create(engine)
+    print("created table: phrase")
+
+    query = session.query(Sentence)[:limit] if limit \
+        else session.query(Sentence)
+
+    with ProgressLine(0.12, title='extracting phrases...'):
+        for item in query:
+            lang1 = item.lang1
+            lang2 = item.lang2
+            print("  ", lang1, lang2)
+            phrases = db_phrase_extract(lang1, lang2,
+                                        lang1method=lang1method,
+                                        lang2method=lang2method,
+                                        init_val=init_val,
+                                        db=db)
+            for lang1ps, lang2ps in phrases:
+                lang1p = u" ".join(lang1ps)
+                lang2p = u" ".join(lang2ps)
+                ph = Phrase(lang1p=lang1p, lang2p=lang2p)
+                session.add(ph)
+            session.commit()
 
 
-def create_phrase_count_view(db_name=":db:"):
+# create views using SQLite3
+def create_phrase_count_view(db="sqlite:///:memory:"):
     # create phrase_count table
-    table_name = "phrase_count"
-    con = sqlite3.connect(db_name)
+    table_name = "phrasecount"
+    con = sqlite3.connect(db)
     cur = con.cursor()
     try:
         cur.execute("drop view {0}".format(table_name))
@@ -255,13 +326,13 @@ def create_phrase_count_view(db_name=":db:"):
               => creating a new view".format(table_name))
     cur.execute("""create view {0}
                  as select *, count(*) as count from
-                phrase group by ja_phrase, en_phrase order by count
+                phrase group by lang1p, lang2p order by count
                 desc""".format(table_name))
     con.commit()
 
     # create phrase_count_ja table
-    table_name_ja = "phrase_count_ja"
-    con = sqlite3.connect(db_name)
+    table_name_ja = "lang1_phrasecount"
+    con = sqlite3.connect(db)
     cur = con.cursor()
     try:
         cur.execute("drop view {0}".format(table_name_ja))
@@ -269,15 +340,15 @@ def create_phrase_count_view(db_name=":db:"):
         print("{0} view does not exists.\n\
               => creating a new view".format(table_name_ja))
     cur.execute("""create view {0}
-                as select ja_phrase,
-                sum(count) as count from phrase_count group by
-                ja_phrase order
+                as select lang1p as langp,
+                sum(count) as count from phrasecount group by
+                lang1p order
                 by count desc""".format(table_name_ja))
     con.commit()
 
     # create phrase_count_en table
-    table_name_en = "phrase_count_en"
-    con = sqlite3.connect(db_name)
+    table_name_en = "lang2_phrasecount"
+    con = sqlite3.connect(db)
     cur = con.cursor()
     try:
         cur.execute("drop view {0}".format(table_name_en))
@@ -285,57 +356,96 @@ def create_phrase_count_view(db_name=":db:"):
         print("{0} view does not exists.\n\
               => creating a new view".format(table_name_en))
     cur.execute("""create view {0}
-                as select en_phrase,
-                sum(count) as count from phrase_count group by
-                en_phrase order
+                as select lang2p as langp,
+                sum(count) as count from phrasecount group by
+                lang2p order
                 by count desc""".format(table_name_en))
     con.commit()
 
 
-def create_phrase_prob(trans, db_name=":db:"):
+# using sqlite
+def create_phrase_prob(transfrom=2, transto=1, db="sqlite:///:memory:"):
     """
     """
     # create phrase_prob table
-    if trans not in ["en2ja", "ja2en"]:
-        raise Exception("trans argument should be either en2ja or ja2en")
-    table_name = "phrase_prob_{0}".format(trans)
-    con = sqlite3.connect(db_name)
+    table_name = "from{0}to{1}_phraseprob".format(transfrom, transto)
+    con = sqlite3.connect(db)
     cur = con.cursor()
     try:
+        print('drop table "{0}"'.format(table_name))
         cur.execute("drop table {0}".format(table_name))
     except sqlite3.Error:
         print("{0} table does not exists.\n\
               => creating a new table".format(table_name))
-    if trans == "en2ja":
-        cur.execute("""create table {0}
-                    (en TEXT, ja TEXT, prob REAL)
-                    """.format(table_name))
-    if trans == "ja2en":
-        cur.execute("""create table {0}
-                    (ja TEXT, en TEXT, prob REAL)
-                    """.format(table_name))
+    cur.execute("""create table {0}
+                (transtop TEXT, transfromp TEXT,
+                prob REAL)""".format(table_name))
     con.commit()
 
     cur_sel = con.cursor()
     cur_rec = con.cursor()
-    cur.execute("select ja_phrase, en_phrase, count from phrase_count")
-    for ja_p, en_p, count in cur:
-        if trans == "en2ja":
-            cur_sel.execute("""select count
-                            from phrase_count_ja where
-                            ja_phrase=?""",
-                            (ja_p,))
-            count_e_j = list(cur_sel)
-            count_e_j = count_e_j[0][0]
-            prob = count / count_e_j
-            cur_rec.execute("""insert into {0} values
-                            (?, ?, ?)""".format(table_name),
-                            (en_p, ja_p, prob))
-            print(u"{0} => {1} : {2}".format(ja_p, en_p, prob))
-        con.commit()
-        # I must implement ja2en ver.
+    cur.execute("select lang1p, lang2p, count from phrasecount")
+    with ProgressLine(0.12, title='phrase learning...'):
+        for lang1p, lang2p, count in cur:
+            if transfrom == 2 and transto == 1:
+                cur_sel.execute(u"""select count
+                                from lang1_phrasecount where
+                                langp=?""",
+                                (lang1p,))
+                count_e_j = list(cur_sel)
+                count_e_j = count_e_j[0][0]
+                prob = count / count_e_j
+                cur_rec.execute(u"""insert into {0} values
+                                (?, ?, ?)""".format(table_name),
+                                (lang1p, lang2p, prob))
+                print(u"{0} => {1} : {2}".format(lang1p, lang2p, prob))
+            elif transfrom == 1 and transto == 2:
+                cur_sel.execute(u"""select count
+                                from lang2_phrasecount where
+                                langp=?""",
+                                (lang2p,))
+                count_e_j = list(cur_sel)
+                count_e_j = count_e_j[0][0]
+                prob = count / count_e_j
+                cur_rec.execute(u"""insert into {0} values
+                                (?, ?, ?)""".format(table_name),
+                                (lang2p, lang1p, prob))
+                print(u"{0} => {1} : {2}".format(lang2p, lang1p, prob))
+            con.commit()
+            con.commit()
+            # I must implement ja2en ver.
     con.commit()
 
+
+def createdb(db=":test:",
+             lang1method=lambda x: x,
+             lang2method=lambda x: x,
+             init_val=1.0e-10,
+             limit=None,
+             loop_count=1000,
+             ):
+    sqlalchemydb = "sqlite:///{0}".format(db)
+    create_train_db(transfrom=2,
+                    transto=1,
+                    db=sqlalchemydb,
+                    limit=limit,
+                    loop_count=loop_count,
+                    lang1method=lang1method,
+                    lang2method=lang2method)
+    create_train_db(transfrom=1,
+                    transto=2,
+                    db=sqlalchemydb,
+                    limit=limit,
+                    loop_count=loop_count,
+                    lang1method=lang1method,
+                    lang2method=lang2method)
+    create_phrase_db(db=sqlalchemydb, limit=limit,
+                     lang1method=lang1method,
+                     lang2method=lang2method,
+                     init_val=init_val)
+    create_phrase_count_view(db)
+    create_phrase_prob(transfrom=2, transto=1, db=db)
+    create_phrase_prob(transfrom=1, transto=2, db=db)
 
 if __name__ == "__main__":
     pass

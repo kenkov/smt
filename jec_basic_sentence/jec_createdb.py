@@ -2,39 +2,49 @@
 # coding:utf-8
 
 from __future__ import division, print_function
-import sqlite3
+from progressline import ProgressLine
 import xlrd
-from createdb import create_train_db
-from createdb import create_phrase_db
-from createdb import create_phrase_count_view
-from createdb import create_phrase_prob
+from smt.db.createdb import createdb
+
+# import SQLAlchemy
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# import smt module
+from smt.db.createdb import Sentence
 
 
-def excel_convert(db_name=":jec_basic:"):
+_Base = declarative_base()
 
-    # db setup
-    con = sqlite3.connect(db_name)
-    cur = con.cursor()
-    try:
-        cur.execute("drop table sentence")
-    except sqlite3.Error:
-        print("sentence table does not exists. creating a new table")
 
-    cur.execute("create table sentence (ja TEXT, en TEXT)")
-    con.commit()
+def excel_convert(db="sqlite:///:memory:",
+                  excel_file="./JEC_basic_sentence_v1-2.xls"):
+    engine = create_engine(db)
+    # first, remove table
+    Sentence.__table__.drop(engine, checkfirst=True)
+    # create table
+    Sentence.__table__.create(engine)
+    print("created table: sentence")
 
-    wb = xlrd.open_workbook("./JEC_basic_sentence_v1-2.xls")
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    # get sentence from excel file
+    wb = xlrd.open_workbook(excel_file)
     sheets = wb.sheets()
     s = sheets[0]
 
-    for j in xrange(s.nrows):
-        item = []
-        for i in xrange(1, s.ncols - 1):
-            item.append(s.cell(j, i).value)
-        #print(item)
-        cur.execute("insert into sentence values (?, ?)", tuple(item))
-    con.commit()
-    cur.close()
+    with ProgressLine(title="inserting items..."):
+        for j in xrange(s.nrows):
+            item = []
+            for i in xrange(1, s.ncols - 1):
+                item.append(s.cell(j, i).value)
+            sentence = Sentence(lang1=item[0], lang2=item[1])
+            # add items
+            session.add(sentence)
+        session.commit()
 
 
 if __name__ == '__main__':
@@ -57,3 +67,13 @@ if __name__ == '__main__':
     create_phrase_count_view(db_name=":test:")
     create_phrase_prob(trans="en2ja", db_name=":jec_basic:")
     '''
+    import keitaiso
+    # new
+    limit = None
+    loop_count = 1000
+    db = ":test:"
+    excel_convert(db="sqlite:///{0}".format(db))
+    createdb(db=db,
+             lang1method=keitaiso.str2wakati,
+             init_val=1.0e-10,
+             )
