@@ -501,11 +501,13 @@ def stack_decoder(sentence, transfrom=2, transto=1,
                     new_hyp = Hypothesis(prev_hypo=hyp,
                                          inputps_with_index=phrase,
                                          outputps=outputps)
-                    print("loop: ", i, "len:", len(new_hyp.covered))
+                    #print("loop: ", i, "len:", len(new_hyp.covered))
                     stacks[len(new_hyp.covered)].add_with_combine_prune(
                         new_hyp)
     return stacks
 
 
 if __name__ == '__main__':
+    #import doctest
+    #doctest.testmod()
     pass

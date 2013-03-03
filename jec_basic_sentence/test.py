@@ -10,7 +10,7 @@ from smt.decoder.stackdecoder import stack_decoder
 
 if __name__ == '__main__':
     #sentence = u"He teaches English".split()
-    sentence = u"He will go abroad".split()
+    sentence = u"He will go to school".split()
     db = "sqlite:///:test:"
     stacks = stack_decoder(sentence,
                            transfrom=2,
@@ -24,7 +24,17 @@ if __name__ == '__main__':
         #for item in stack:
         #    print(item)
     #print(dec)
-    stack = stacks[3]
+    # search non-empty stack
+
+    def search_nonempty_stack(stacks):
+        for i, stack in reversed(list(enumerate(stacks))):
+            if stack == set([]):
+                continue
+            else:
+                return i, stack
+
+    i, stack = search_nonempty_stack(stacks)
+    print("non-empty stack is {0}".format(i))
     stack_lst = list(stack)
     mx = stack_lst[0]
     for item in stack_lst:
