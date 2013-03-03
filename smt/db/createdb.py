@@ -364,57 +364,63 @@ def create_phrase_count_view(db="sqlite:///:memory:"):
 
 
 # using sqlite
-def create_phrase_prob(transfrom=2, transto=1, db="sqlite:///:memory:"):
+def create_phrase_prob(db=":memory:"):
     """
     """
     # create phrase_prob table
-    table_name = "from{0}to{1}_phraseprob".format(transfrom, transto)
+    table_name = "phraseprob"
+    engine = create_engine("sqlite:///{0}".format(db))
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    _Base = declarative_base()
+
+    class TransPhraseProb(_Base):
+        __tablename__ = table_name
+        id = Column(INTEGER, primary_key=True)
+        lang1p = Column(TEXT)
+        lang2p = Column(TEXT)
+        p1_2 = Column(REAL)
+        p2_1 = Column(REAL)
+
+    # create table for word probability
+    TransPhraseProb.__table__.drop(engine, checkfirst=True)
+    TransPhraseProb.__table__.create(engine)
+    session.commit()
+    print("created table: {0}".format(table_name))
+
     con = sqlite3.connect(db)
     cur = con.cursor()
-    try:
-        print('drop table "{0}"'.format(table_name))
-        cur.execute("drop table {0}".format(table_name))
-    except sqlite3.Error:
-        print("{0} table does not exists.\n\
-              => creating a new table".format(table_name))
-    cur.execute("""create table {0}
-                (transtop TEXT, transfromp TEXT,
-                prob REAL)""".format(table_name))
-    con.commit()
-
     cur_sel = con.cursor()
-    cur_rec = con.cursor()
+    #cur_rec = con.cursor()
     cur.execute("select lang1p, lang2p, count from phrasecount")
     with ProgressLine(0.12, title='phrase learning...'):
         for lang1p, lang2p, count in cur:
-            if transfrom == 2 and transto == 1:
-                cur_sel.execute(u"""select count
-                                from lang1_phrasecount where
-                                langp=?""",
-                                (lang1p,))
-                count_e_j = list(cur_sel)
-                count_e_j = count_e_j[0][0]
-                prob = count / count_e_j
-                cur_rec.execute(u"""insert into {0} values
-                                (?, ?, ?)""".format(table_name),
-                                (lang1p, lang2p, prob))
-                print(u"{0} => {1} : {2}".format(lang1p, lang2p, prob))
-            elif transfrom == 1 and transto == 2:
-                cur_sel.execute(u"""select count
-                                from lang2_phrasecount where
-                                langp=?""",
-                                (lang2p,))
-                count_e_j = list(cur_sel)
-                count_e_j = count_e_j[0][0]
-                prob = count / count_e_j
-                cur_rec.execute(u"""insert into {0} values
-                                (?, ?, ?)""".format(table_name),
-                                (lang2p, lang1p, prob))
-                print(u"{0} => {1} : {2}".format(lang2p, lang1p, prob))
-            con.commit()
-            con.commit()
-            # I must implement ja2en ver.
-    con.commit()
+            # for p2_1
+            cur_sel.execute(u"""select count
+                            from lang1_phrasecount where
+                            langp=?""",
+                            (lang1p,))
+            count2_1 = list(cur_sel)
+            count2_1 = count2_1[0][0]
+            p2_1 = count / count2_1
+            # for p1_2
+            cur_sel.execute(u"""select count
+                            from lang2_phrasecount where
+                            langp=?""",
+                            (lang2p,))
+            count1_2 = list(cur_sel)
+            count1_2 = count1_2[0][0]
+            p1_2 = count / count1_2
+            # insert item
+            transphraseprob = TransPhraseProb(lang1p=lang1p,
+                                              lang2p=lang2p,
+                                              p1_2=p1_2,
+                                              p2_1=p2_1)
+            session.add(transphraseprob)
+            print(u"  added phraseprob: {0} <=> {1} ".format(lang1p, lang2p))
+        session.commit()
 
 
 def createdb(db=":memory:",
@@ -424,28 +430,7 @@ def createdb(db=":memory:",
              limit=None,
              loop_count=1000,
              ):
-    sqlalchemydb = "sqlite:///{0}".format(db)
-    create_train_db(transfrom=2,
-                    transto=1,
-                    db=sqlalchemydb,
-                    limit=limit,
-                    loop_count=loop_count,
-                    lang1method=lang1method,
-                    lang2method=lang2method)
-    create_train_db(transfrom=1,
-                    transto=2,
-                    db=sqlalchemydb,
-                    limit=limit,
-                    loop_count=loop_count,
-                    lang1method=lang1method,
-                    lang2method=lang2method)
-    create_phrase_db(db=sqlalchemydb, limit=limit,
-                     lang1method=lang1method,
-                     lang2method=lang2method,
-                     init_val=init_val)
-    create_phrase_count_view(db)
-    create_phrase_prob(transfrom=2, transto=1, db=db)
-    create_phrase_prob(transfrom=1, transto=2, db=db)
+    create_phrase_prob(db=db)
 
 if __name__ == "__main__":
     pass

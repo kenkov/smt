@@ -68,8 +68,10 @@ if __name__ == '__main__':
     limit = None
     loop_count = 1000
     db = ":test:"
-    excel_convert(db="sqlite:///{0}".format(db))
-    createdb(db=db,
-             lang1method=keitaiso.str2wakati,
-             init_val=1.0e-10,
-             )
+    #excel_convert(db="sqlite:///{0}".format(db))
+    #createdb(db=db,
+    #         lang1method=keitaiso.str2wakati,
+    #         init_val=1.0e-10,
+    #         limit=limit,
+    #         loop_count=loop_count,
+    #         )

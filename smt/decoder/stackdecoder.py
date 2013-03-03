@@ -2,39 +2,63 @@
 # coding:utf-8
 
 from __future__ import division, print_function
-import sqlite3
 import math
-#from pprint import pprint
+# sqlalchemy
+import sqlalchemy
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine
+from sqlalchemy import Column, TEXT, REAL, INTEGER
+from sqlalchemy.orm import sessionmaker
 
 
-def phrase_prob(f, e, trans, db_name=":db:"):
+# prepare classes for sqlalchemy
+class Phrase(declarative_base()):
+    __tablename__ = "phrase"
+    id = Column(INTEGER, primary_key=True)
+    lang1p = Column(TEXT)
+    lang2p = Column(TEXT)
+
+
+class TransPhraseProb(declarative_base()):
+    __tablename__ = "phraseprob"
+    id = Column(INTEGER, primary_key=True)
+    lang1p = Column(TEXT)
+    lang2p = Column(TEXT)
+    p1_2 = Column(REAL)
+    p2_1 = Column(REAL)
+
+
+def phrase_prob(lang1p, lang2p,
+                transfrom=2,
+                transto=1,
+                db="sqlite:///:memory:",
+                init_val=1.0e-10):
     """
-    >>> e = u"I am"
-    >>> f = u"私 は"
-    >>> prob = decode.phrase_prob(e, f, trans="en2ja", db_name=":jec_basic:")
     """
-    if trans not in ["en2ja", "ja2en"]:
-        raise Exception("trans argument should be either en2ja or ja2en")
-    con = sqlite3.connect(db_name)
-    cur = con.cursor()
-    if trans == "en2ja":
-        cur.execute("""select prob
-                    from phrase_prob_en2ja where
-                    en=? and ja=?""",
-                    (f, e))
-        ans = list(cur)
-    if ans:
-        return ans[0][0]
-    else:
-        # define the default value
-        # in the case no mached probability is found.
-        return 1.0e-10
+    engine = create_engine(db)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    # search
+    query = session.query(TransPhraseProb).filter_by(lang1p=lang1p,
+                                                     lang2p=lang2p)
+    if transfrom == 2 and transto == 1:
+        try:
+            # Be Careful! The order of conditional prob is reversed
+            # as transfrom and transto because of bayes rule
+            return query.one().p2_1
+        except sqlalchemy.orm.exc.NoResultFound:
+            return init_val
+    elif transfrom == 1 and transto == 2:
+        try:
+            return query.one().p1_2
+        except sqlalchemy.orm.exc.NoResultFound:
+            return init_val
 
 
-def available_phrases(fs, db_name=":db:"):
+def available_phrases(inputs, transfrom=2, transto=1, db="sqlite:///:memory:"):
     """
     >>> decode.available_phrases(u"He is a teacher.".split(),
-                                 db_name=":db:"))
+                                 db_name="sqlite:///:db:"))
     set([((1, u'He'),),
          ((1, u'He'), (2, u'is')),
          ((2, u'is'),),
@@ -42,17 +66,21 @@ def available_phrases(fs, db_name=":db:"):
          ((3, u'a'),),
          ((4, u'teacher.'),)])
     """
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
     available = set()
-    con = sqlite3.connect(db_name)
-    cur = con.cursor()
-    for i, f in enumerate(fs):
+    for i, f in enumerate(inputs):
         f_rest = ()
-        for fr in fs[i:]:
+        for fr in inputs[i:]:
             f_rest += (fr,)
-            cur.execute("""select * from phrase where
-                        en_phrase=?""",
-                        (" ".join(f_rest),))
-            lst = list(cur)
+            rest_phrase = u" ".join(f_rest)
+            if transfrom == 2 and transto == 1:
+                query = session.query(Phrase).filter_by(lang2p=rest_phrase)
+            elif transfrom == 1 and transto == 2:
+                query = session.query(Phrase).filter_by(lang1p=rest_phrase)
+            lst = list(query)
             if lst:
                 available.add(tuple(enumerate(f_rest, i+1)))
     return available
@@ -60,10 +88,14 @@ def available_phrases(fs, db_name=":db:"):
 
 class HypothesisBase(object):
     def __init__(self,
-                 db_name,
-                 sentence,
-                 input_phrase,
-                 output_phrase,
+                 db,
+                 sentences,
+                 ngram,
+                 ngram_words,
+                 inputps_with_index,
+                 outputps,
+                 transfrom,
+                 transto,
                  covered,
                  remained,
                  start,
@@ -75,10 +107,14 @@ class HypothesisBase(object):
                  prev_hypo
                  ):
 
-        self._db_name = db_name
-        self._sentence = sentence
-        self._input_phrase = input_phrase
-        self._output_phrase = output_phrase
+        self._db = db
+        self._sentences = sentences
+        self._ngram = ngram
+        self._ngram_words = ngram_words
+        self._inputps_with_index = inputps_with_index
+        self._outputps = outputps
+        self._transfrom = transfrom
+        self._transto = transto
         self._covered = covered
         self._remained = remained
         self._start = start
@@ -89,21 +125,39 @@ class HypothesisBase(object):
         self._prob = prob
         self._prev_hypo = prev_hypo
 
-    @property
-    def db_name(self):
-        return self._db_name
+        self._output_sentences = outputps
 
     @property
-    def sentence(self):
-        return self._sentence
+    def db(self):
+        return self._db
 
     @property
-    def input_phrase(self):
-        return self._input_phrase
+    def sentences(self):
+        return self._sentences
 
     @property
-    def output_phrase(self):
-        return self._output_phrase
+    def ngram(self):
+        return self._ngram
+
+    @property
+    def ngram_words(self):
+        return self._ngram_words
+
+    @property
+    def inputps_with_index(self):
+        return self._inputps_with_index
+
+    @property
+    def outputps(self):
+        return self._outputps
+
+    @property
+    def transfrom(self):
+        return self._transfrom
+
+    @property
+    def transto(self):
+        return self._transto
 
     @property
     def covered(self):
@@ -130,18 +184,30 @@ class HypothesisBase(object):
         return self._prev_end
 
     @property
+    def remain_phrases(self):
+        return self._remain_phrases
+
+    @property
     def prob(self):
         return self._prob
 
     @property
-    def remain_phrases(self):
-        return self._remain_phrases
+    def prev_hypo(self):
+        return self._prev_hypo
+
+    @property
+    def output_sentences(self):
+        return self._output_sentences
 
     def __unicode__(self):
-        d = [("db_name", self._db_name),
-             ("sentence", self._sentence),
-             ("input_phrase", self._input_phrase),
-             ("output_phrase", self._output_phrase),
+        d = [("db", self._db),
+             ("sentences", self._sentences),
+             ("inputps_with_index", self._inputps_with_index),
+             ("outputps", self._outputps),
+             ("ngram", self._ngram),
+             ("ngram_words", self._ngram_words),
+             ("transfrom", self._transfrom),
+             ("transto", self._transto),
              ("covered", self._covered),
              ("remained", self._remained),
              ("start", self._start),
@@ -149,11 +215,11 @@ class HypothesisBase(object):
              ("prev_start", self._prev_start),
              ("prev_end", self._prev_end),
              ("remain_phrases", self._remain_phrases),
-             ("probability", self._prob)
+             ("prob", self._prob)
              #("prev_hypo", ""),
              ]
         return u"Hypothesis Object\n" +\
-               u"\n".join([u"    " + k + u": " +
+               u"\n".join([u" " + k + u": " +
                            unicode(v) for (k, v) in d])
 
     def __str__(self):
@@ -167,60 +233,88 @@ class Hypothesis(HypothesisBase):
     """
     Realize like the following class
 
-    >>> args = {"sentence": fs,
-    ...         "input_phrase": phrase,
-    ...         "output_phrase": output_phrase,
-    ...         "covered": hyp0.covered.union(set(phrase)),
-    ...         "remained": hyp0.remained.difference(set(phrase)),
-    ...         "start": phrase[0][0],
-    ...         "end": phrase[-1][0],
-    ...         "prev_start": hyp0.start,
-    ...         "prev_end": hyp0.end,
-    ...         "remain_phrases": remain_phrases(phrase,
-    ...                                          hyp0.remain_phrases),
-    ...         "prev_hypo": hyp0
-    ...         }
+    >>> args = {"sentences": sentences,
+    ... "inputps_with_index": phrase,
+    ... "outputps": outputps,
+    ... "covered": hyp0.covered.union(set(phrase)),
+    ... "remained": hyp0.remained.difference(set(phrase)),
+    ... "start": phrase[0][0],
+    ... "end": phrase[-1][0],
+    ... "prev_start": hyp0.start,
+    ... "prev_end": hyp0.end,
+    ... "remain_phrases": remain_phrases(phrase,
+    ... hyp0.remain_phrases),
+    ... "prev_hypo": hyp0
+    ... }
 
     >>> hyp1 = decode.HypothesisBase(**args)
     """
 
     def __init__(self,
                  prev_hypo,
-                 input_phrase,
-                 output_phrase,
+                 inputps_with_index,
+                 outputps,
                  ):
 
-        start = input_phrase[0][0]
-        end = input_phrase[-1][0]
+        start = inputps_with_index[0][0]
+        end = inputps_with_index[-1][0]
         prev_start = prev_hypo.start
         prev_end = prev_hypo.end
-        args = {"db_name": prev_hypo.db_name,
+        args = {"db": prev_hypo.db,
                 "prev_hypo": prev_hypo,
-                "sentence": prev_hypo.sentence,
-                "input_phrase": input_phrase,
-                "output_phrase": output_phrase,
-                "covered": prev_hypo.covered.union(set(input_phrase)),
-                "remained": prev_hypo.remained.difference(set(input_phrase)),
+                "sentences": prev_hypo.sentences,
+                "ngram": prev_hypo.ngram,
+                # set later
+                "ngram_words": prev_hypo.ngram_words,
+                "inputps_with_index": inputps_with_index,
+                "outputps": outputps,
+                "transfrom": prev_hypo.transfrom,
+                "transto": prev_hypo.transto,
+                "covered": prev_hypo.covered.union(set(inputps_with_index)),
+                "remained": prev_hypo.remained.difference(
+                    set(inputps_with_index)),
                 "start": start,
                 "end": end,
                 "prev_start": prev_start,
                 "prev_end": prev_end,
                 "remain_phrases": self._calc_remain_phrases(
-                    input_phrase,
+                    inputps_with_index,
                     prev_hypo.remain_phrases),
-                # set provability for a moment,
-                # The exact probability is set below
+                # set later
                 "prob": 1
                 }
         HypothesisBase.__init__(self, **args)
+        # set ngram words
+        self._ngram_words = self._set_ngram_words()
         # set the exact probability
         self._prob = self._cal_prob(start - prev_end)
+        # set the output phrases
+        self._output_sentences = prev_hypo.output_sentences + outputps
+
+    def _set_ngram_words(self):
+        lst = self._prev_hypo.ngram_words + list(self._outputps)
+        return list(reversed(list(reversed(lst))[:self._ngram]))
 
     def _cal_phrase_prob(self):
-        input_phrase = " ".join(zip(*self._input_phrase)[1])
-        output_phrase = " ".join(self._output_phrase)
-        return phrase_prob(input_phrase, output_phrase,
-                           trans="en2ja", db_name=self._db_name)
+        inputp = u" ".join(zip(*self._inputps_with_index)[1])
+        outputp = u" ".join(self._outputps)
+
+        if self._transfrom == 2 and self._transto == 1:
+            return phrase_prob(lang1p=outputp,
+                               lang2p=inputp,
+                               transfrom=self._transfrom,
+                               transto=self._transto,
+                               db=self._db,
+                               init_val=1.0e-10)
+        elif self._transfrom == 1 and self._transto == 2:
+            return phrase_prob(lang1p=inputp,
+                               lang2p=outputp,
+                               transfrom=self._transfrom,
+                               transto=self._transto,
+                               db=self._db,
+                               init_val=1.0e-10)
+        else:
+            raise Exception("specify transfrom and transto")
 
     def _cal_prob(self, dist):
         val = self._prev_hypo.prob *\
@@ -234,20 +328,20 @@ class Hypothesis(HypothesisBase):
     def _calc_remain_phrases(self, phrase, phrases):
         """
         >>> res = remain_phrases(((2, u'is'),),
-                                 set([((1, u'he'),),
-                                      ((2, u'is'),),
-                                      ((3, u'a'),),
-                                      ((2, u'is'),
-                                       (3, u'a')),
-                                      ((4, u'teacher'),)]))
+        set([((1, u'he'),),
+        ((2, u'is'),),
+        ((3, u'a'),),
+        ((2, u'is'),
+        (3, u'a')),
+        ((4, u'teacher'),)]))
         set([((1, u'he'),), ((3, u'a'),), ((4, u'teacher'),)])
         >>> res = remain_phrases(((2, u'is'), (3, u'a')),
-                                 set([((1, u'he'),),
-                                      ((2, u'is'),),
-                                      ((3, u'a'),),
-                                      ((2, u'is'),
-                                       (3, u'a')),
-                                      ((4, u'teacher'),)]))
+        set([((1, u'he'),),
+        ((2, u'is'),),
+        ((3, u'a'),),
+        ((2, u'is'),
+        (3, u'a')),
+        ((4, u'teacher'),)]))
         set([((1, u'he'),), ((4, u'teacher'),)])
         """
         s = set()
@@ -260,19 +354,24 @@ class Hypothesis(HypothesisBase):
         return s
 
 
-def create_empty_hypothesis(fs, db_name):
-    phrases = available_phrases(fs,
-                                db_name=db_name)
-    hyp0 = HypothesisBase(sentence=fs,
-                          db_name=db_name,
-                          input_phrase=(),
-                          output_phrase=(),
+def create_empty_hypothesis(sentences, ngram=3, transfrom=2, transto=1,
+                            db="sqlite:///:memory:"):
+    phrases = available_phrases(sentences,
+                                db=db)
+    hyp0 = HypothesisBase(sentences=sentences,
+                          db=db,
+                          inputps_with_index=(),
+                          outputps=[],
+                          ngram=ngram,
+                          ngram_words=["<S>"]*ngram,
+                          transfrom=transfrom,
+                          transto=transto,
                           covered=set(),
                           start=0,
                           end=0,
                           prev_start=0,
                           prev_end=0,
-                          remained=set(enumerate(fs, 1)),
+                          remained=set(enumerate(sentences, 1)),
                           remain_phrases=phrases,
                           prev_hypo=None,
                           prob=1)
@@ -280,15 +379,28 @@ def create_empty_hypothesis(fs, db_name):
 
 
 class Stack(set):
-    def __init__(self, size=100):
+    def __init__(self, size=10,
+                 histogram_pruning=True,
+                 threshold_pruning=False):
         set.__init__(self)
         self._min_hyp = None
+        self._max_hyp = None
         self._size = size
+        self._histogram_pruning = histogram_pruning
+        self._threshold_pruning = threshold_pruning
 
     def add_hyp(self, hyp):
+        prob = hyp.prob
+        # for the first time
+        if self == set([]):
+            self._min_hyp = hyp
+            self._max_hyp = hyp
+        else:
+            if self._min_hyp.prob > prob:
+                self._min_hyp = hyp
+            if self._max_hyp.prob < prob:
+                self._max_hyp = hyp
         self.add(hyp)
-        if len(self) > self._size:
-            self.remove(self._get_min_hyp())
 
     def _get_min_hyp(self):
         # set value which is more than 1
@@ -299,29 +411,99 @@ class Stack(set):
                 mn = item
         return mn
 
+    def add_with_combine_prune(self, hyp):
+        prob = hyp.prob
+        if self == set([]):
+            self._min_hyp = hyp
+            self._max_hyp = hyp
+        else:
+            if self._min_hyp.prob > prob:
+                self._min_hyp = hyp
+            if self._max_hyp.prob < prob:
+                self._max_hyp = hyp
+        self.add(hyp)
+        # combine
+        for _hyp in self:
+            if hyp.ngram_words[:-1] == _hyp.ngram_words[:-1] and \
+                    hyp.end == hyp.end:
+                if hyp.prob > _hyp:
+                    self.remove(_hyp)
+                    self.add(hyp)
+                    break
+        # histogram pruning
+        if self._histogram_pruning:
+            if len(self) > self._size:
+                self.remove(self._min_hyp)
+                self._min_hyp = self._get_min_hyp()
+        # threshold pruning
+        if self._threshold_pruning:
+            alpha = 1.0e-5
+            if hyp.prob < self._max_hyp * alpha:
+                self.remove(hyp)
 
-def stack_decoder(fs, db_name):
-    con = sqlite3.connect(db_name)
-    cur = con.cursor()
-    len_fs = len(fs)
-    stacks = [Stack() for i in range(len_fs+1)]
-    hyp0 = create_empty_hypothesis(fs, db_name=db_name)
+
+def stack_decoder(sentence, transfrom=2, transto=1,
+                  stacksize=10,
+                  lang1method=lambda x: x,
+                  lang2method=lambda x: x,
+                  db="sqlite:///:memory:"):
+    # create phrase_prob table
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    if transfrom == 2 and transto == 1:
+        sentences = lang2method(sentence)
+    else:
+        sentences = lang1method(sentence)
+    # create stacks
+    len_sentences = len(sentences)
+    stacks = [Stack(size=stacksize,
+                    histogram_pruning=True,
+                    threshold_pruning=False,
+                    ) for i in range(len_sentences+1)]
+    # create the initial hypothesis
+    hyp0 = create_empty_hypothesis(sentences=sentences,
+                                   ngram=3,
+                                   transfrom=2,
+                                   transto=1,
+                                   db=db)
     stacks[0].add_hyp(hyp0)
+
+    # main loop
     for i, stack in enumerate(stacks):
         for hyp in stack:
             for phrase in hyp.remain_phrases:
                 phrase_str = u" ".join(zip(*phrase)[1])
-                cur.execute("""select ja_phrase from phrase_count where
-                            en_phrase=?""",
-                            (phrase_str,))
-                for output_phrase in cur:
-                    print("calculating\n  {0} = {1}\n  in stack {2}".format(
-                          phrase, output_phrase, i))
-                    output_phrase = output_phrase[0]
+                if transfrom == 2 and transto == 1:
+                    query = session.query(TransPhraseProb).filter_by(
+                        lang2p=phrase_str).order_by(
+                            sqlalchemy.desc(TransPhraseProb.p2_1))[:10]
+                elif transfrom == 1 and transto == 2:
+                    query = session.query(TransPhraseProb).filter_by(
+                        lang1p=phrase_str).order_by(
+                            sqlalchemy.desc(TransPhraseProb.p1_2))[:10]
+                query = list(query)
+                for item in query:
+                    if transfrom == 2 and transto == 1:
+                        outputp = item.lang1p
+                    elif transfrom == 1 and transto == 2:
+                        outputp = item.lang2p
+                    #print(u"calculating\n {0} = {1}\n in stack {2}".format(
+                    #      phrase, outputp, i))
+                    if transfrom == 2 and transto == 1:
+                        outputps = lang1method(outputp).split()
+                    elif transfrom == 1 and transto == 2:
+                        outputps = lang2method(outputp).split()
+                    # place in stack
+                    # and recombine with existing hypothesis if possible
                     new_hyp = Hypothesis(prev_hypo=hyp,
-                                         input_phrase=phrase,
-                                         output_phrase=output_phrase)
-                    stacks[len(new_hyp.covered)].add(new_hyp)
+                                         inputps_with_index=phrase,
+                                         outputps=outputps)
+                    print("loop: ", i, "len:", len(new_hyp.covered))
+                    stacks[len(new_hyp.covered)].add_with_combine_prune(
+                        new_hyp)
     return stacks
 
 

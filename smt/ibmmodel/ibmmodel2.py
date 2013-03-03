@@ -60,7 +60,12 @@ def _train(corpus, loop_count=1000):
                     total_a[(j, l_e, l_f)] += c
         # estimate probability
         for (e, f) in count.keys():
-            t[(e, f)] = count[(e, f)] / total[f]
+            try:
+                t[(e, f)] = count[(e, f)] / total[f]
+            except ZeroDivisionError:
+                print(u"e: {e}, f: {f}, count[(e, f)]: {ef}, total[f]: \
+                      {totalf}".format(e=e, f=f, ef=count[(e, f)],
+                                       totalf=total[f]))
         for (i, j, l_e, l_f) in count_a.keys():
             a[(i, j, l_e, l_f)] = count_a[(i, j, l_e, l_f)] / \
                 total_a[(j, l_e, l_f)]
@@ -127,11 +132,11 @@ if __name__ == '__main__':
     #              ]
     print(utility.matrix(2, 3, [(1, 1), (2, 3)]))
     sentences = [("僕 は 男 です", "I am a man"),
-                  ("私 は 女 です", "I am a girl"),
-                  ("私 は 先生 です", "I am a teacher"),
-                  ("彼女 は 先生 です", "She is a teacher"),
-                  ("彼 は 先生 です", "He is a teacher"),
-                  ]
-    t, a = train(sentences, loop_count=1000)
+                 ("私 は 女 です", "I am a girl"),
+                 ("私 は 先生 です", "I am a teacher"),
+                 ("彼女 は 先生 です", "She is a teacher"),
+                 ("彼 は 先生 です", "He is a teacher"),
+                 ]
+    t, a = train(sentences, loop_count=100)
     args = ("私 は 先生 です".split(), "I am a teacher".split(), t, a)
     print(show_matrix(*args))
