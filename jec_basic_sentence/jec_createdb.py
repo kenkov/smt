@@ -65,13 +65,13 @@ if __name__ == '__main__':
     '''
     import keitaiso
     # new
-    limit = None
-    loop_count = 1000
+    limit = 10
+    loop_count = 1
     db = ":test:"
-    #excel_convert(db="sqlite:///{0}".format(db))
-    #createdb(db=db,
-    #         lang1method=keitaiso.str2wakati,
-    #         init_val=1.0e-10,
-    #         limit=limit,
-    #         loop_count=loop_count,
-    #         )
+    excel_convert(db="sqlite:///{0}".format(db))
+    createdb(db=db,
+             lang1method=keitaiso.str2wakati,
+             init_val=1.0e-10,
+             limit=limit,
+             loop_count=loop_count,
+             )

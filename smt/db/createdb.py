@@ -310,11 +310,11 @@ def create_phrase_db(limit=None,
                 lang2p = u" ".join(lang2ps)
                 ph = Phrase(lang1p=lang1p, lang2p=lang2p)
                 session.add(ph)
-            session.commit()
+        session.commit()
 
 
 # create views using SQLite3
-def create_phrase_count_view(db="sqlite:///:memory:"):
+def create_phrase_count_view(db=":memory:"):
     # create phrase_count table
     table_name = "phrasecount"
     con = sqlite3.connect(db)
@@ -430,17 +430,28 @@ def createdb(db=":memory:",
              limit=None,
              loop_count=1000,
              ):
+    alchemydb = "sqlite:///{0}".format(db)
+    #create_train_db(transfrom=2,
+    #                transto=1,
+    #                lang1method=lang1method,
+    #                lang2method=lang2method,
+    #                db=alchemydb,
+    #                limit=limit,
+    #                loop_count=loop_count)
+    #create_train_db(transfrom=1,
+    #                transto=2,
+    #                lang1method=lang1method,
+    #                lang2method=lang2method,
+    #                db=alchemydb,
+    #                limit=limit,
+    #                loop_count=loop_count)
+    create_phrase_db(limit=limit,
+                     lang1method=lang1method,
+                     lang2method=lang2method,
+                     init_val=init_val,
+                     db=alchemydb)
+    create_phrase_count_view(db=db)
     create_phrase_prob(db=db)
 
 if __name__ == "__main__":
     pass
-    #create_train_db(trans="en2ja",
-    #                db_name=":jec_basic:",
-    #                limit=None,
-    #                loop_count=1000)
-    #create_train_db(trans="ja2en",
-    #                db_name=":jec_basic:",
-    #                limit=None,
-    #                loop_count=1000)
-    #create_phrase_db(db_name=":jec_basic:", limit=None)
-    #create_phrase_count_view(db_name=":jec_basic:")

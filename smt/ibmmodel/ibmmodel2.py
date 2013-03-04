@@ -62,10 +62,14 @@ def _train(corpus, loop_count=1000):
         for (e, f) in count.keys():
             try:
                 t[(e, f)] = count[(e, f)] / total[f]
+                #print(u"e: {e}, f: {f}, count[(e, f)]: {ef}, total[f]: \
+                #      {totalf}".format(e=e, f=f, ef=count[(e, f)],
+                #                       totalf=total[f]))
             except ZeroDivisionError:
                 print(u"e: {e}, f: {f}, count[(e, f)]: {ef}, total[f]: \
                       {totalf}".format(e=e, f=f, ef=count[(e, f)],
                                        totalf=total[f]))
+                raise
         for (i, j, l_e, l_f) in count_a.keys():
             a[(i, j, l_e, l_f)] = count_a[(i, j, l_e, l_f)] / \
                 total_a[(j, l_e, l_f)]

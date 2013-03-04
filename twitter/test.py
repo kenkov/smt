@@ -103,13 +103,10 @@ def create_sentence_db(db="sqlite:///:phrasetwitter:"):
 
 
 if __name__ == "__main__":
-    #create_reply_view(db=":twitter:")
-    #reply_search(db=":twitter:")
-
     import keitaiso
     # new
-    limit = None
-    loop_count = 1000
+    limit = 10000
+    loop_count = 10
     db = ":phrasetwitter:"
     #create_sentence_db(db="sqlite:///{0}".format(db))
     createdb(db=db,

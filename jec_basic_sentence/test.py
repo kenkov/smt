@@ -10,8 +10,8 @@ from smt.decoder.stackdecoder import stack_decoder
 
 if __name__ == '__main__':
     #sentence = u"He teaches English".split()
-    sentence = u"He will go to school".split()
-    db = "sqlite:///:test:"
+    sentence = u"I like an apple".split()
+    db = "sqlite:///:jec_basic:"
     stacks = stack_decoder(sentence,
                            transfrom=2,
                            transto=1,
