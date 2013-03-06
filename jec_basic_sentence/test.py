@@ -9,9 +9,11 @@ from smt.decoder.stackdecoder import stack_decoder
 
 
 if __name__ == '__main__':
-    #sentence = u"He teaches English".split()
-    sentence = u"I like an apple".split()
+    sentence = u"I learn English"
+    #sentence = u"the tourism initiative addresses this\
+    #    for the first time"
     db = "sqlite:///:jec_basic:"
+
     stacks = stack_decoder(sentence,
                            transfrom=2,
                            transto=1,
@@ -39,7 +41,7 @@ if __name__ == '__main__':
     mx = stack_lst[0]
     for item in stack_lst:
         #print(item)
-        if item.prob > mx.prob:
+        if item.prob_with_cost > mx.prob_with_cost:
             mx = item
     print(mx)
     print(u' '.join(mx.output_sentences))

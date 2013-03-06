@@ -55,6 +55,18 @@ def phrase_prob(lang1p, lang2p,
             return init_val
 
 
+def phrase_log_prob(lang1p, lang2p,
+                    transfrom=2,
+                    transto=1,
+                    db="sqlite:///:memory:",
+                    init_val=1.0e-10):
+    return math.log(phrase_prob(lang1p, lang2p,
+                                transfrom=transfrom,
+                                transto=transto,
+                                db=db,
+                                init_val=init_val))
+
+
 def available_phrases(inputs, transfrom=2, transto=1, db="sqlite:///:memory:"):
     """
     >>> decode.available_phrases(u"He is a teacher.".split(),
@@ -104,7 +116,9 @@ class HypothesisBase(object):
                  prev_end,
                  remain_phrases,
                  prob,
-                 prev_hypo
+                 prob_with_cost,
+                 prev_hypo,
+                 cost_dict
                  ):
 
         self._db = db
@@ -123,7 +137,9 @@ class HypothesisBase(object):
         self._prev_end = prev_end
         self._remain_phrases = remain_phrases
         self._prob = prob
+        self._prob_with_cost = prob_with_cost
         self._prev_hypo = prev_hypo
+        self._cost_dict = cost_dict
 
         self._output_sentences = outputps
 
@@ -192,8 +208,16 @@ class HypothesisBase(object):
         return self._prob
 
     @property
+    def prob_with_cost(self):
+        return self._prob_with_cost
+
+    @property
     def prev_hypo(self):
         return self._prev_hypo
+
+    @property
+    def cost_dict(self):
+        return self._cost_dict
 
     @property
     def output_sentences(self):
@@ -215,7 +239,9 @@ class HypothesisBase(object):
              ("prev_start", self._prev_start),
              ("prev_end", self._prev_end),
              ("remain_phrases", self._remain_phrases),
-             ("prob", self._prob)
+             ("prob", self._prob),
+             ("prob_with_cost", self._prob_with_cost),
+             #("cost_dict", self._cost_dict),
              #("prev_hypo", ""),
              ]
         return u"Hypothesis Object\n" +\
@@ -280,14 +306,18 @@ class Hypothesis(HypothesisBase):
                 "remain_phrases": self._calc_remain_phrases(
                     inputps_with_index,
                     prev_hypo.remain_phrases),
+                "cost_dict": prev_hypo.cost_dict,
                 # set later
-                "prob": 1
+                "prob": 0,
+                "prob_with_cost": 0,
                 }
         HypothesisBase.__init__(self, **args)
         # set ngram words
         self._ngram_words = self._set_ngram_words()
         # set the exact probability
         self._prob = self._cal_prob(start - prev_end)
+        # set the exact probability with cost
+        self._prob_with_cost = self._cal_prob_with_cost(start - prev_end)
         # set the output phrases
         self._output_sentences = prev_hypo.output_sentences + outputps
 
@@ -300,30 +330,62 @@ class Hypothesis(HypothesisBase):
         outputp = u" ".join(self._outputps)
 
         if self._transfrom == 2 and self._transto == 1:
-            return phrase_prob(lang1p=outputp,
-                               lang2p=inputp,
-                               transfrom=self._transfrom,
-                               transto=self._transto,
-                               db=self._db,
-                               init_val=1.0e-10)
+            return phrase_log_prob(lang1p=outputp,
+                                   lang2p=inputp,
+                                   transfrom=self._transfrom,
+                                   transto=self._transto,
+                                   db=self._db,
+                                   init_val=1.0e-10)
         elif self._transfrom == 1 and self._transto == 2:
-            return phrase_prob(lang1p=inputp,
-                               lang2p=outputp,
-                               transfrom=self._transfrom,
-                               transto=self._transto,
-                               db=self._db,
-                               init_val=1.0e-10)
+            return phrase_log_prob(lang1p=inputp,
+                                   lang2p=outputp,
+                                   transfrom=self._transfrom,
+                                   transto=self._transto,
+                                   db=self._db,
+                                   init_val=1.0e-10)
         else:
             raise Exception("specify transfrom and transto")
 
     def _cal_prob(self, dist):
-        val = self._prev_hypo.prob *\
-            self._reordering_model(0.1, dist) *\
+        val = self._prev_hypo.prob +\
+            self._reordering_model(0.1, dist) +\
             self._cal_phrase_prob()
         return val
 
+    def _sub_cal_prob_with_cost(self, s_len, cvd):
+        insert_flag = False
+        lst = []
+        sub_lst = []
+        for i in range(1, s_len+1):
+            if i not in cvd:
+                insert_flag = True
+            else:
+                insert_flag = False
+                if sub_lst:
+                    lst.append(sub_lst)
+                sub_lst = []
+            if insert_flag:
+                sub_lst.append(i)
+        else:
+            if sub_lst:
+                lst.append(sub_lst)
+        return lst
+
+    def _cal_prob_with_cost(self, dist):
+        s_len = len(self._sentences)
+        cvd = set(i for i, val in self._covered)
+        lst = self._sub_cal_prob_with_cost(s_len, cvd)
+        prob = self._cal_prob(dist)
+        prob_with_cost = prob
+        for item in lst:
+            start = item[0]
+            end = item[-1]
+            cost = self._cost_dict[(start, end)]
+            prob_with_cost += cost
+        return prob_with_cost
+
     def _reordering_model(self, alpha, dist):
-        return math.pow(alpha, math.fabs(dist))
+        return math.log(math.pow(alpha, math.fabs(dist)))
 
     def _calc_remain_phrases(self, phrase, phrases):
         """
@@ -354,7 +416,8 @@ class Hypothesis(HypothesisBase):
         return s
 
 
-def create_empty_hypothesis(sentences, ngram=3, transfrom=2, transto=1,
+def create_empty_hypothesis(sentences, cost_dict,
+                            ngram=3, transfrom=2, transto=1,
                             db="sqlite:///:memory:"):
     phrases = available_phrases(sentences,
                                 db=db)
@@ -374,7 +437,9 @@ def create_empty_hypothesis(sentences, ngram=3, transfrom=2, transto=1,
                           remained=set(enumerate(sentences, 1)),
                           remain_phrases=phrases,
                           prev_hypo=None,
-                          prob=1)
+                          prob=0,
+                          cost_dict=cost_dict,
+                          prob_with_cost=0)
     return hyp0
 
 
@@ -390,16 +455,18 @@ class Stack(set):
         self._threshold_pruning = threshold_pruning
 
     def add_hyp(self, hyp):
-        prob = hyp.prob
+        #prob = hyp.prob
         # for the first time
         if self == set([]):
             self._min_hyp = hyp
             self._max_hyp = hyp
         else:
-            if self._min_hyp.prob > prob:
-                self._min_hyp = hyp
-            if self._max_hyp.prob < prob:
-                self._max_hyp = hyp
+            raise Exception("Don't use add_hyp for nonempty stack")
+        #else:
+        #    if self._min_hyp.prob > prob:
+        #        self._min_hyp = hyp
+        #    if self._max_hyp.prob < prob:
+        #        self._max_hyp = hyp
         self.add(hyp)
 
     def _get_min_hyp(self):
@@ -407,26 +474,26 @@ class Stack(set):
         lst = list(self)
         mn = lst[0]
         for item in self:
-            if item.prob < mn.prob:
+            if item.prob_with_cost < mn.prob_with_cost:
                 mn = item
         return mn
 
     def add_with_combine_prune(self, hyp):
-        prob = hyp.prob
+        prob_with_cost = hyp.prob_with_cost
         if self == set([]):
             self._min_hyp = hyp
             self._max_hyp = hyp
         else:
-            if self._min_hyp.prob > prob:
+            if self._min_hyp.prob_with_cost > prob_with_cost:
                 self._min_hyp = hyp
-            if self._max_hyp.prob < prob:
+            if self._max_hyp.prob_with_cost < prob_with_cost:
                 self._max_hyp = hyp
         self.add(hyp)
         # combine
         for _hyp in self:
             if hyp.ngram_words[:-1] == _hyp.ngram_words[:-1] and \
                     hyp.end == hyp.end:
-                if hyp.prob > _hyp:
+                if hyp.prob_with_cost > _hyp:
                     self.remove(_hyp)
                     self.add(hyp)
                     break
@@ -438,8 +505,98 @@ class Stack(set):
         # threshold pruning
         if self._threshold_pruning:
             alpha = 1.0e-5
-            if hyp.prob < self._max_hyp * alpha:
+            if hyp.prob_with_cost < self._max_hyp + math.log(alpha):
                 self.remove(hyp)
+
+
+def language_model():
+    return math.log(1)
+
+
+def _future_cost_estimate(sentences,
+                          one_word_prob,
+                          phrase_prob):
+    '''
+    warning:
+        pass the complete one_word_prob
+    '''
+    s_len = len(sentences)
+    cost = {}
+
+    # add one word prob
+    for tpl, prob in one_word_prob.items():
+        index = tpl[0]
+        cost[(index, index)] = prob
+
+    for length in range(1, s_len+1):
+        for start in range(1, s_len-length+1):
+            end = start + length
+            #print("start: {0}, end: {1}".format(start, end))
+            try:
+                cost[(start, end)] = phrase_prob[(start, end)]
+            except KeyError:
+                cost[(start, end)] = -float('inf')
+            for i in range(start, end):
+                _val = cost[(start, i)] + cost[(i+1, end)]
+                #print("cost[({0}, {1})] + cost[({1}+1, {2})]\
+                #      = {3}".format(start, i, end,
+                #                    _val))
+                if _val > cost[(start, end)]:
+                    cost[(start, end)] = _val
+    return cost
+
+
+def future_cost_estimate(sentences,
+                         transfrom=2,
+                         transto=1,
+                         init_val=-100.0,
+                         db="sqlite:///:memory:"):
+    # create phrase_prob table
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    phrases = available_phrases(sentences,
+                                db=db)
+
+    #sentences_with_index = list(enumerate(sentences, 1))
+    covered = {}
+    for phrase in phrases:
+        phrase_str = u" ".join(zip(*phrase)[1])
+        if transfrom == 2 and transto == 1:
+            query = session.query(TransPhraseProb).filter_by(
+                lang2p=phrase_str).order_by(
+                    sqlalchemy.desc(TransPhraseProb.p2_1))
+        elif transfrom == 1 and transto == 2:
+            query = session.query(TransPhraseProb).filter_by(
+                lang1p=phrase_str).order_by(
+                    sqlalchemy.desc(TransPhraseProb.p1_2))
+        lst = list(query)
+        if lst:
+            # extract the maximum val
+            val = query.first()
+            if transfrom == 2 and transto == 1:
+                covered[zip(*phrase)[0]] = math.log(val.p2_1) + \
+                    language_model()
+            if transfrom == 1 and transto == 2:
+                covered[zip(*phrase)[0]] = math.log(val.p1_2) + \
+                    language_model()
+    # estimate future costs
+    phrase_prob = covered
+    one_word_prob_dict = {key: val for key, val in phrase_prob.items()
+                          if len(key) == 1}
+    one_word_prob_dict_nums = [i for (i, ) in one_word_prob_dict.keys()]
+    one_word_prob = {}
+    # complete the one_word_prob
+    s_len = len(sentences)
+    for i in range(1, s_len+1):
+        if i not in one_word_prob_dict_nums:
+            one_word_prob[(i,)] = init_val
+    one_word_prob.update(one_word_prob_dict)
+
+    return _future_cost_estimate(sentences,
+                                 one_word_prob,
+                                 phrase_prob)
 
 
 def stack_decoder(sentence, transfrom=2, transto=1,
@@ -454,17 +611,23 @@ def stack_decoder(sentence, transfrom=2, transto=1,
     session = Session()
 
     if transfrom == 2 and transto == 1:
-        sentences = lang2method(sentence)
+        sentences = lang2method(sentence).split()
     else:
-        sentences = lang1method(sentence)
+        sentences = lang1method(sentence).split()
     # create stacks
     len_sentences = len(sentences)
     stacks = [Stack(size=stacksize,
                     histogram_pruning=True,
                     threshold_pruning=False,
                     ) for i in range(len_sentences+1)]
-    # create the initial hypothesis
+
+    cost_dict = future_cost_estimate(sentences,
+                                     transfrom=transfrom,
+                                     transto=transto,
+                                     db=db)
+     #create the initial hypothesis
     hyp0 = create_empty_hypothesis(sentences=sentences,
+                                   cost_dict=cost_dict,
                                    ngram=3,
                                    transfrom=2,
                                    transto=1,
@@ -501,6 +664,7 @@ def stack_decoder(sentence, transfrom=2, transto=1,
                     new_hyp = Hypothesis(prev_hypo=hyp,
                                          inputps_with_index=phrase,
                                          outputps=outputps)
+                    #print(phrase, u' '.join(outputps))
                     #print("loop: ", i, "len:", len(new_hyp.covered))
                     stacks[len(new_hyp.covered)].add_with_combine_prune(
                         new_hyp)
