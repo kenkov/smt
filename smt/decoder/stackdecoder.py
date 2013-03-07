@@ -601,9 +601,11 @@ def future_cost_estimate(sentences,
 
 def stack_decoder(sentence, transfrom=2, transto=1,
                   stacksize=10,
+                  searchsize=10,
                   lang1method=lambda x: x,
                   lang2method=lambda x: x,
-                  db="sqlite:///:memory:"):
+                  db="sqlite:///:memory:",
+                  verbose=False):
     # create phrase_prob table
     engine = create_engine(db)
     # create session
@@ -642,11 +644,11 @@ def stack_decoder(sentence, transfrom=2, transto=1,
                 if transfrom == 2 and transto == 1:
                     query = session.query(TransPhraseProb).filter_by(
                         lang2p=phrase_str).order_by(
-                            sqlalchemy.desc(TransPhraseProb.p2_1))[:10]
+                            sqlalchemy.desc(TransPhraseProb.p2_1))[:searchsize]
                 elif transfrom == 1 and transto == 2:
                     query = session.query(TransPhraseProb).filter_by(
                         lang1p=phrase_str).order_by(
-                            sqlalchemy.desc(TransPhraseProb.p1_2))[:10]
+                            sqlalchemy.desc(TransPhraseProb.p1_2))[:searchsize]
                 query = list(query)
                 for item in query:
                     if transfrom == 2 and transto == 1:
@@ -664,8 +666,9 @@ def stack_decoder(sentence, transfrom=2, transto=1,
                     new_hyp = Hypothesis(prev_hypo=hyp,
                                          inputps_with_index=phrase,
                                          outputps=outputps)
-                    #print(phrase, u' '.join(outputps))
-                    #print("loop: ", i, "len:", len(new_hyp.covered))
+                    if verbose:
+                        print(phrase, u' '.join(outputps))
+                        print("loop: ", i, "len:", len(new_hyp.covered))
                     stacks[len(new_hyp.covered)].add_with_combine_prune(
                         new_hyp)
     return stacks

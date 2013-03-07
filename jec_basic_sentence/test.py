@@ -2,14 +2,12 @@
 # coding:utf-8
 
 from __future__ import division, print_function
-import sys
-sys.path.append("../")
 import keitaiso
 from smt.decoder.stackdecoder import stack_decoder
 
 
 if __name__ == '__main__':
-    sentence = u"I learn English"
+    sentence = u"It always seems like it is there."
     #sentence = u"the tourism initiative addresses this\
     #    for the first time"
     db = "sqlite:///:jec_basic:"
@@ -18,9 +16,11 @@ if __name__ == '__main__':
                            transfrom=2,
                            transto=1,
                            stacksize=10,
+                           searchsize=10,
                            lang1method=keitaiso.str2wakati,
                            lang2method=lambda x: x,
-                           db=db)
+                           db=db,
+                           verbose=True)
     for i, stack in enumerate(stacks):
         print("STACK: {0}, len: {1}".format(i, len(stack)))
         #for item in stack:
