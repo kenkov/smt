@@ -11,3 +11,4 @@ jec_basic_sentence/:jec_basic:-journal
 jec_basic_sentence/:test:
 jec_basic_sentence/terminal.py
 jec_basic_sentence/JEC_basic_sentence_v1-2.xls
+test/:test:
