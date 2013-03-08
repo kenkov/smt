@@ -15,6 +15,7 @@ from sqlalchemy import create_engine
 from sqlalchemy import Column, TEXT, REAL, INTEGER
 from sqlalchemy.orm import sessionmaker
 import sqlite3
+import math
 
 
 _Base = declarative_base()
@@ -416,8 +417,8 @@ def create_phrase_prob(db=":memory:"):
             # insert item
             transphraseprob = TransPhraseProb(lang1p=lang1p,
                                               lang2p=lang2p,
-                                              p1_2=p1_2,
-                                              p2_1=p2_1)
+                                              p1_2=math.log(p1_2),
+                                              p2_1=math.log(p2_1))
             session.add(transphraseprob)
             print(u"  added phraseprob: {0} <=> {1} ".format(lang1p, lang2p))
         session.commit()

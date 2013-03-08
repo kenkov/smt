@@ -9,9 +9,12 @@ from smt.db.createdb import createdb
 # import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, TEXT, REAL, INTEGER
 
 # import smt module
 from smt.db.createdb import Sentence
+import math
 
 
 def excel_convert(db="sqlite:///:memory:",
@@ -43,30 +46,48 @@ def excel_convert(db="sqlite:///:memory:",
         session.commit()
 
 
+class TransPhraseProb(declarative_base()):
+    __tablename__ = "phraseprob"
+    id = Column(INTEGER, primary_key=True)
+    lang1p = Column(TEXT)
+    lang2p = Column(TEXT)
+    p1_2 = Column(REAL)
+    p2_1 = Column(REAL)
+
+
+def convert_to_log_prob(dbfrom="sqlite:///:memory:",
+                        dbto="sqlite:///:memory:"):
+    fromengine = create_engine(dbfrom)
+    # create session
+    FromSession = sessionmaker(bind=fromengine)
+    fromsession = FromSession()
+    query = fromsession.query(TransPhraseProb)
+
+    toengine = create_engine(dbto)
+    # first, remove table
+    TransPhraseProb.__table__.drop(toengine, checkfirst=True)
+    # create table
+    TransPhraseProb.__table__.create(toengine)
+    print("create phraseprob table for log")
+    # create session
+    ToSession = sessionmaker(bind=toengine)
+    tosession = ToSession()
+    tosession.add_all(TransPhraseProb(lang1p=item.lang1p,
+                                      lang2p=item.lang2p,
+                                      p1_2=math.log(item.p1_2),
+                                      p2_1=math.log(item.p2_1),
+                                      )
+                      for item in query)
+    tosession.commit()
+
+
 if __name__ == '__main__':
-    pass
+    """
     # test
-    '''
-    limit = 10
-    loop_count = 10
-    db_name = ":test:"
-    excel_convert(db_name=db_name)
-    create_train_db(trans="en2ja",
-                    db_name=db_name,
-                    limit=limit,
-                    loop_count=loop_count)
-    create_train_db(trans="ja2en",
-                    db_name=db_name,
-                    limit=limit,
-                    loop_count=loop_count)
-    create_phrase_db(db_name=db_name, limit=limit)
-    create_phrase_count_view(db_name=":test:")
-    create_phrase_prob(trans="en2ja", db_name=":jec_basic:")
-    '''
     import keitaiso
     # new
-    limit = 10
-    loop_count = 1
+    limit = None
+    loop_count = 10000
     db = ":test:"
     excel_convert(db="sqlite:///{0}".format(db))
     createdb(db=db,
@@ -75,3 +96,6 @@ if __name__ == '__main__':
              limit=limit,
              loop_count=loop_count,
              )
+    """
+    convert_to_log_prob(dbfrom="sqlite:///:jec_basic:",
+                        dbto="sqlite:///:jec_log_basic:")

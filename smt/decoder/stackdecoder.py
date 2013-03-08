@@ -9,6 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy import Column, TEXT, REAL, INTEGER
 from sqlalchemy.orm import sessionmaker
+#from pprint import pprint
 
 
 # prepare classes for sqlalchemy
@@ -53,18 +54,6 @@ def phrase_prob(lang1p, lang2p,
             return query.one().p1_2
         except sqlalchemy.orm.exc.NoResultFound:
             return init_val
-
-
-def phrase_log_prob(lang1p, lang2p,
-                    transfrom=2,
-                    transto=1,
-                    db="sqlite:///:memory:",
-                    init_val=1.0e-10):
-    return math.log(phrase_prob(lang1p, lang2p,
-                                transfrom=transfrom,
-                                transto=transto,
-                                db=db,
-                                init_val=init_val))
 
 
 def available_phrases(inputs, transfrom=2, transto=1, db="sqlite:///:memory:"):
@@ -330,19 +319,19 @@ class Hypothesis(HypothesisBase):
         outputp = u" ".join(self._outputps)
 
         if self._transfrom == 2 and self._transto == 1:
-            return phrase_log_prob(lang1p=outputp,
-                                   lang2p=inputp,
-                                   transfrom=self._transfrom,
-                                   transto=self._transto,
-                                   db=self._db,
-                                   init_val=1.0e-10)
+            return phrase_prob(lang1p=outputp,
+                               lang2p=inputp,
+                               transfrom=self._transfrom,
+                               transto=self._transto,
+                               db=self._db,
+                               init_val=1.0e-10)
         elif self._transfrom == 1 and self._transto == 2:
-            return phrase_log_prob(lang1p=inputp,
-                                   lang2p=outputp,
-                                   transfrom=self._transfrom,
-                                   transto=self._transto,
-                                   db=self._db,
-                                   init_val=1.0e-10)
+            return phrase_prob(lang1p=inputp,
+                               lang2p=outputp,
+                               transfrom=self._transfrom,
+                               transto=self._transto,
+                               db=self._db,
+                               init_val=1.0e-10)
         else:
             raise Exception("specify transfrom and transto")
 
@@ -510,11 +499,14 @@ class Stack(set):
 
 
 def language_model():
-    return math.log(1)
+    return 0
+
+
+class ArgumentNotSatisfied(Exception):
+    pass
 
 
 def _future_cost_estimate(sentences,
-                          one_word_prob,
                           phrase_prob):
     '''
     warning:
@@ -522,6 +514,12 @@ def _future_cost_estimate(sentences,
     '''
     s_len = len(sentences)
     cost = {}
+
+    one_word_prob = {(st, ed): prob for (st, ed), prob in phrase_prob.items()
+                     if st == ed}
+
+    if set(one_word_prob.keys()) != set((x, x) for x in range(1, s_len+1)):
+        raise ArgumentNotSatisfied("phrase_prob doesn't satisfy the condition")
 
     # add one word prob
     for tpl, prob in one_word_prob.items():
@@ -531,19 +529,30 @@ def _future_cost_estimate(sentences,
     for length in range(1, s_len+1):
         for start in range(1, s_len-length+1):
             end = start + length
-            #print("start: {0}, end: {1}".format(start, end))
             try:
                 cost[(start, end)] = phrase_prob[(start, end)]
             except KeyError:
                 cost[(start, end)] = -float('inf')
             for i in range(start, end):
                 _val = cost[(start, i)] + cost[(i+1, end)]
-                #print("cost[({0}, {1})] + cost[({1}+1, {2})]\
-                #      = {3}".format(start, i, end,
-                #                    _val))
                 if _val > cost[(start, end)]:
                     cost[(start, end)] = _val
     return cost
+
+
+def _create_estimate_dict(sentences,
+                          phrase_prob,
+                          init_val=-100):
+    one_word_prob_dict_nums = set(x for x, y in phrase_prob.keys() if x == y)
+    comp_dic = {}
+    # complete the one_word_prob
+    s_len = len(sentences)
+    for i in range(1, s_len+1):
+        if i not in one_word_prob_dict_nums:
+            comp_dic[(i, i)] = init_val
+    for key, val in phrase_prob.items():
+        comp_dic[key] = val
+    return comp_dic
 
 
 def future_cost_estimate(sentences,
@@ -575,27 +584,19 @@ def future_cost_estimate(sentences,
         if lst:
             # extract the maximum val
             val = query.first()
+            start = zip(*phrase)[0][0]
+            end = zip(*phrase)[0][-1]
+            pos = (start, end)
             if transfrom == 2 and transto == 1:
-                covered[zip(*phrase)[0]] = math.log(val.p2_1) + \
+                covered[pos] = val.p2_1 + \
                     language_model()
             if transfrom == 1 and transto == 2:
-                covered[zip(*phrase)[0]] = math.log(val.p1_2) + \
+                covered[pos] = val.p1_2 + \
                     language_model()
     # estimate future costs
-    phrase_prob = covered
-    one_word_prob_dict = {key: val for key, val in phrase_prob.items()
-                          if len(key) == 1}
-    one_word_prob_dict_nums = [i for (i, ) in one_word_prob_dict.keys()]
-    one_word_prob = {}
-    # complete the one_word_prob
-    s_len = len(sentences)
-    for i in range(1, s_len+1):
-        if i not in one_word_prob_dict_nums:
-            one_word_prob[(i,)] = init_val
-    one_word_prob.update(one_word_prob_dict)
+    phrase_prob = _create_estimate_dict(sentences, covered)
 
     return _future_cost_estimate(sentences,
-                                 one_word_prob,
                                  phrase_prob)
 
 
