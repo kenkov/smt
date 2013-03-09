@@ -18,10 +18,7 @@ import sqlite3
 import math
 
 
-_Base = declarative_base()
-
-
-class Sentence(_Base):
+class Sentence(declarative_base()):
     __tablename__ = 'sentence'
     id = Column(INTEGER, primary_key=True)
     lang1 = Column(TEXT)
