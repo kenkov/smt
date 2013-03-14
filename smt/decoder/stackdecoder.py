@@ -312,7 +312,8 @@ class Hypothesis(HypothesisBase):
 
     def _set_ngram_words(self):
         lst = self._prev_hypo.ngram_words + list(self._outputps)
-        return list(reversed(list(reversed(lst))[:self._ngram]))
+        o_len = len(self._outputps)
+        return list(reversed(list(reversed(lst))[:o_len - 1 + self._ngram]))
 
     def _cal_phrase_prob(self):
         inputp = u" ".join(zip(*self._inputps_with_index)[1])
@@ -324,14 +325,14 @@ class Hypothesis(HypothesisBase):
                                transfrom=self._transfrom,
                                transto=self._transto,
                                db=self._db,
-                               init_val=1.0e-10)
+                               init_val=-100)
         elif self._transfrom == 1 and self._transto == 2:
             return phrase_prob(lang1p=inputp,
                                lang2p=outputp,
                                transfrom=self._transfrom,
                                transto=self._transto,
                                db=self._db,
-                               init_val=1.0e-10)
+                               init_val=-100)
         else:
             raise Exception("specify transfrom and transto")
 
@@ -415,7 +416,7 @@ def create_empty_hypothesis(sentences, cost_dict,
                           inputps_with_index=(),
                           outputps=[],
                           ngram=ngram,
-                          ngram_words=["<S>"]*ngram,
+                          ngram_words=["</s>", "<s>"]*ngram,
                           transfrom=transfrom,
                           transto=transto,
                           covered=set(),
