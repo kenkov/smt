@@ -71,10 +71,10 @@ def create_ngram_count_db(lang, langmethod=lambda x: x,
 
 
 # create views using SQLite3
-def create_ngram_count_except_last_view(lang, db=":memory:"):
+def create_ngram_count_without_last_view(lang, db=":memory:"):
     # create phrase_count table
     fromtablename = "lang{}trigram".format(lang)
-    table_name = "lang{}trigram_except_last".format(lang)
+    table_name = "lang{}trigram_without_last".format(lang)
     # create connection
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -94,7 +94,7 @@ def create_ngram_prob(lang,
                       db=":memory:"):
 
     # Create connection in sqlite3 to use view
-    table_name = "lang{}trigram_except_last".format(lang)
+    table_name = "lang{}trigram_without_last".format(lang)
     # create connection
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -115,6 +115,13 @@ def create_ngram_prob(lang,
         third = Column(TEXT)
         prob = Column(REAL)
 
+    class TrigramProbWithoutLast(declarative_base()):
+        __tablename__ = 'lang{}trigramprob_without_last'.format(lang)
+        id = Column(INTEGER, primary_key=True)
+        first = Column(TEXT)
+        second = Column(TEXT)
+        prob = Column(REAL)
+
     # create connection in SQLAlchemy
     sqlalchemydb = "sqlite:///{}".format(db)
     engine = create_engine(sqlalchemydb)
@@ -124,6 +131,8 @@ def create_ngram_prob(lang,
     # create table
     TrigramProb.__table__.drop(engine, checkfirst=True)
     TrigramProb.__table__.create(engine)
+    TrigramProbWithoutLast.__table__.drop(engine, checkfirst=True)
+    TrigramProbWithoutLast.__table__.create(engine)
 
     # calculate total number
     query = session.query(Trigram)
@@ -149,6 +158,7 @@ def create_ngram_prob(lang,
             c = count
             n = one[2]
             v = totalnumber
+            # create logprob
             logprob = math.log((c + alpha) / (n + alpha * v))
             print(u"{}, {}, {}:\
                   log({} + {} / {} + {} + {}) = {}".format(first,
@@ -165,6 +175,21 @@ def create_ngram_prob(lang,
                                       third=third,
                                       prob=logprob)
             session.add(trigramprob)
+            # for without last
+            logprobwithoutlast = math.log(alpha / (n + alpha * v))
+            print(u"{}, {}, {}:\
+                  log({} / {} + {} + {}) = {}".format(first,
+                                                      second,
+                                                      third,
+                                                      alpha,
+                                                      n,
+                                                      alpha,
+                                                      v,
+                                                      logprobwithoutlast))
+            probwl = TrigramProbWithoutLast(first=first,
+                                            second=second,
+                                            prob=logprobwithoutlast)
+            session.add(probwl)
     session.commit()
 
 
@@ -172,10 +197,10 @@ def create_ngram_db(lang, langmethod=lambda x: x,
                     n=3, db=":memory:"):
 
     sqlalchemydb = "sqlite:///{}".format(db)
-    create_ngram_count_db(lang=lang, langmethod=langmethod,
-                          n=n,
-                          db=sqlalchemydb)
-    create_ngram_count_except_last_view(lang=lang, db=db)
+    #create_ngram_count_db(lang=lang, langmethod=langmethod,
+    #                      n=n,
+    #                      db=sqlalchemydb)
+    #create_ngram_count_without_last_view(lang=lang, db=db)
     create_ngram_prob(lang=lang, db=db)
 
 

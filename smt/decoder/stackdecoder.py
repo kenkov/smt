@@ -336,10 +336,21 @@ class Hypothesis(HypothesisBase):
         else:
             raise Exception("specify transfrom and transto")
 
+    def _cal_language_prob(self):
+        nw = self.ngram_words
+        triwords = zip(nw, nw[1:], nw[2:])
+        prob = 0
+        for first, second, third in triwords:
+            prob += language_model(first, second, third,
+                                   transto=self._transto,
+                                   db=self._db)
+        return prob
+
     def _cal_prob(self, dist):
         val = self._prev_hypo.prob +\
             self._reordering_model(0.1, dist) +\
-            self._cal_phrase_prob()
+            self._cal_phrase_prob() +\
+            self._cal_language_prob()
         return val
 
     def _sub_cal_prob_with_cost(self, s_len, cvd):
@@ -499,8 +510,70 @@ class Stack(set):
                 self.remove(hyp)
 
 
-def language_model():
-    return 0
+def _get_total_number(transto=1, db="sqlite:///:memory:"):
+    """
+    return v
+    """
+
+    class Trigram(declarative_base()):
+        __tablename__ = 'lang{}trigram'.format(transto)
+        id = Column(INTEGER, primary_key=True)
+        first = Column(TEXT)
+        second = Column(TEXT)
+        third = Column(TEXT)
+        count = Column(INTEGER)
+
+    # create connection in SQLAlchemy
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    # calculate total number
+    query = session.query(Trigram)
+    totalnumber = len(query.all())
+
+    return totalnumber
+
+
+def language_model(first, second, third, transto=1,
+                   db="sqlalchemy:///:memory:"):
+
+    class TrigramProb(declarative_base()):
+        __tablename__ = 'lang{}trigramprob'.format(transto)
+        id = Column(INTEGER, primary_key=True)
+        first = Column(TEXT)
+        second = Column(TEXT)
+        third = Column(TEXT)
+        prob = Column(REAL)
+
+    class TrigramProbWithoutLast(declarative_base()):
+        __tablename__ = 'lang{}trigramprob'.format(transto)
+        id = Column(INTEGER, primary_key=True)
+        first = Column(TEXT)
+        second = Column(TEXT)
+        prob = Column(REAL)
+
+    # create session
+    engine = create_engine(db)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    try:
+        # next line can raise error if the prob is not found
+        query = session.query(TrigramProb).filter_by(first=first,
+                                                     second=second,
+                                                     third=third)
+        item = query.one()
+        return item.prob
+    except sqlalchemy.orm.exc.NoResultFound:
+        try:
+            query = session.query(TrigramProbWithoutLast
+                                  ).filter_by(first=first,
+                                              second=second)
+            item = query.one()
+            return item.prob
+        except sqlalchemy.orm.exc.NoResultFound:
+            return - math.log(_get_total_number(transto=1, db=db))
 
 
 class ArgumentNotSatisfied(Exception):
@@ -589,11 +662,11 @@ def future_cost_estimate(sentences,
             end = zip(*phrase)[0][-1]
             pos = (start, end)
             if transfrom == 2 and transto == 1:
-                covered[pos] = val.p2_1 + \
-                    language_model()
+                covered[pos] = val.p2_1
+                    # + language_model()
             if transfrom == 1 and transto == 2:
-                covered[pos] = val.p1_2 + \
-                    language_model()
+                covered[pos] = val.p1_2
+                    # + language_model()
     # estimate future costs
     phrase_prob = _create_estimate_dict(sentences, covered)
 
