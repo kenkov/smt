@@ -90,6 +90,7 @@ def available_phrases(inputs, transfrom=2, transto=1, db="sqlite:///:memory:"):
 class HypothesisBase(object):
     def __init__(self,
                  db,
+                 totalnumber,
                  sentences,
                  ngram,
                  ngram_words,
@@ -111,6 +112,7 @@ class HypothesisBase(object):
                  ):
 
         self._db = db
+        self._totalnumber = totalnumber
         self._sentences = sentences
         self._ngram = ngram
         self._ngram_words = ngram_words
@@ -135,6 +137,10 @@ class HypothesisBase(object):
     @property
     def db(self):
         return self._db
+
+    @property
+    def totalnumber(self):
+        return self._totalnumber
 
     @property
     def sentences(self):
@@ -276,6 +282,7 @@ class Hypothesis(HypothesisBase):
         prev_start = prev_hypo.start
         prev_end = prev_hypo.end
         args = {"db": prev_hypo.db,
+                "totalnumber": prev_hypo.totalnumber,
                 "prev_hypo": prev_hypo,
                 "sentences": prev_hypo.sentences,
                 "ngram": prev_hypo.ngram,
@@ -341,7 +348,7 @@ class Hypothesis(HypothesisBase):
         triwords = zip(nw, nw[1:], nw[2:])
         prob = 0
         for first, second, third in triwords:
-            prob += language_model(first, second, third,
+            prob += language_model(first, second, third, self._totalnumber,
                                    transto=self._transto,
                                    db=self._db)
         return prob
@@ -424,6 +431,8 @@ def create_empty_hypothesis(sentences, cost_dict,
                                 db=db)
     hyp0 = HypothesisBase(sentences=sentences,
                           db=db,
+                          totalnumber=_get_total_number(transto=transto,
+                                                        db=db),
                           inputps_with_index=(),
                           outputps=[],
                           ngram=ngram,
@@ -441,6 +450,7 @@ def create_empty_hypothesis(sentences, cost_dict,
                           prob=0,
                           cost_dict=cost_dict,
                           prob_with_cost=0)
+    print(_get_total_number(transto=transto, db=db))
     return hyp0
 
 
@@ -536,7 +546,7 @@ def _get_total_number(transto=1, db="sqlite:///:memory:"):
     return totalnumber
 
 
-def language_model(first, second, third, transto=1,
+def language_model(first, second, third, totalnumber, transto=1,
                    db="sqlalchemy:///:memory:"):
 
     class TrigramProb(declarative_base()):
@@ -566,14 +576,15 @@ def language_model(first, second, third, transto=1,
         item = query.one()
         return item.prob
     except sqlalchemy.orm.exc.NoResultFound:
-        try:
-            query = session.query(TrigramProbWithoutLast
-                                  ).filter_by(first=first,
-                                              second=second)
-            item = query.one()
+        query = session.query(TrigramProbWithoutLast
+                              ).filter_by(first=first,
+                                          second=second)
+        # I have to modify the database
+        item = query.first()
+        if item:
             return item.prob
-        except sqlalchemy.orm.exc.NoResultFound:
-            return - math.log(_get_total_number(transto=1, db=db))
+        else:
+            return - math.log(totalnumber)
 
 
 class ArgumentNotSatisfied(Exception):

@@ -7,7 +7,7 @@ from smt.decoder.stackdecoder import stack_decoder
 
 
 if __name__ == '__main__':
-    sentence = u"He is a teacher."
+    sentence = u"She like the teacher"
     #sentence = u"the tourism initiative addresses this\
     #    for the first time"
     db = "sqlite:///:jec_log_basic:"

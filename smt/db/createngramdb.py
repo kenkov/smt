@@ -197,10 +197,10 @@ def create_ngram_db(lang, langmethod=lambda x: x,
                     n=3, db=":memory:"):
 
     sqlalchemydb = "sqlite:///{}".format(db)
-    #create_ngram_count_db(lang=lang, langmethod=langmethod,
-    #                      n=n,
-    #                      db=sqlalchemydb)
-    #create_ngram_count_without_last_view(lang=lang, db=db)
+    create_ngram_count_db(lang=lang, langmethod=langmethod,
+                          n=n,
+                          db=sqlalchemydb)
+    create_ngram_count_without_last_view(lang=lang, db=db)
     create_ngram_prob(lang=lang, db=db)
 
 
