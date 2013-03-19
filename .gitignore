@@ -2,6 +2,7 @@ smt.egg-info/
 *.pyc
 terminal.py
 twitter/:twitter:
+twitter/:log_twitter:
 twitter/:hoge:
 twitter/:phrasetwitter:
 twitter/test.txt

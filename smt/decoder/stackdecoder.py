@@ -450,7 +450,7 @@ def create_empty_hypothesis(sentences, cost_dict,
                           prob=0,
                           cost_dict=cost_dict,
                           prob_with_cost=0)
-    print(_get_total_number(transto=transto, db=db))
+    #print(_get_total_number(transto=transto, db=db))
     return hyp0
 
 
