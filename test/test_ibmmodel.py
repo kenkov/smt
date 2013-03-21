@@ -4,8 +4,10 @@
 from __future__ import division, print_function
 import unittest
 import collections
+import keitaiso
 from smt.ibmmodel.ibmmodel1 import train
 from smt.ibmmodel.ibmmodel2 import viterbi_alignment
+import smt.ibmmodel.ibmmodel2 as ibmmodel2
 
 
 class IBMModel1Test(unittest.TestCase):
@@ -73,6 +75,25 @@ class IBMModel2Test(unittest.TestCase):
         # This means it returns NULL token
         # in such a situation.
         self.assertEqual(x, {1: 1, 2: 1, 3: 1})
+
+    def test_zero_division_error(self):
+        """
+        at the beginning, there was this bug for ZeroDivisionError,
+        so this test was created to check that
+        """
+        sentence = [(u"Xではないかとつくづく疑問に思う",
+                     u"I often wonder if it might be X."),
+                    (u"Xがいいなといつも思います",
+                     u"I always think X would be nice."),
+                    (u"それがあるようにいつも思います",
+                     u"It always seems like it is there."),
+                    ]
+        sentences = [(keitaiso.str2wakati(s1), s2) for
+                     s1, s2 in sentence]
+
+        self.assertRaises(ZeroDivisionError,
+                          ibmmodel2.train,
+                          sentences, loop_count=1000)
 
 
 if __name__ == '__main__':

@@ -18,12 +18,17 @@ class _keydefaultdict(collections.defaultdict):
 
 
 def _train(corpus, loop_count=1000):
+    print(corpus)
+    print(loop_count)
     f_keys = set()
     for (es, fs) in corpus:
         for f in fs:
             f_keys.add(f)
     # initialize t
     t = ibmmodel1._train(corpus, loop_count)
+    for k, v in t.items():
+        if v == 0:
+            print(k, v)
     # default value provided as uniform probability)
 
     def key_fun(key):
@@ -58,6 +63,10 @@ def _train(corpus, loop_count=1000):
                     total[f] += c
                     count_a[(i, j, l_e, l_f)] += c
                     total_a[(j, l_e, l_f)] += c
+
+        for k, v in total.items():
+            if v == 0:
+                print(k, v)
         # estimate probability
         for (e, f) in count.keys():
             try:
@@ -77,6 +86,8 @@ def _train(corpus, loop_count=1000):
 
 
 def train(sentences, loop_count=1000):
+    for i, j in sentences:
+        print(i, j)
     corpus = utility.mkcorpus(sentences)
     return _train(corpus, loop_count)
 
