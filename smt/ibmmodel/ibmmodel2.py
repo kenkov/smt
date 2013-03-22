@@ -5,6 +5,12 @@ from __future__ import division, print_function
 import collections
 import ibmmodel1
 import utility
+import decimal
+from decimal import Decimal as D
+
+# set deciaml context
+decimal.getcontext().prec = 4
+decimal.getcontext().rounding = decimal.ROUND_HALF_UP
 
 
 class _keydefaultdict(collections.defaultdict):
@@ -18,35 +24,32 @@ class _keydefaultdict(collections.defaultdict):
 
 
 def _train(corpus, loop_count=1000):
-    print(corpus)
-    print(loop_count)
+    #print(corpus)
+    #print(loop_count)
     f_keys = set()
     for (es, fs) in corpus:
         for f in fs:
             f_keys.add(f)
     # initialize t
     t = ibmmodel1._train(corpus, loop_count)
-    for k, v in t.items():
-        if v == 0:
-            print(k, v)
     # default value provided as uniform probability)
 
     def key_fun(key):
         ''' default_factory function for keydefaultdict '''
         i, j, l_e, l_f = key
-        return 1 / (l_f + 1)
+        return D("1") / D(l_f + 1)
     a = _keydefaultdict(key_fun)
 
     # loop
     for _i in xrange(loop_count):
         # variables for estimating t
-        count = collections.defaultdict(float)
-        total = collections.defaultdict(float)
+        count = collections.defaultdict(D)
+        total = collections.defaultdict(D)
         # variables for estimating a
-        count_a = collections.defaultdict(float)
-        total_a = collections.defaultdict(float)
+        count_a = collections.defaultdict(D)
+        total_a = collections.defaultdict(D)
 
-        s_total = collections.defaultdict(float)
+        s_total = collections.defaultdict(D)
         for (es, fs) in corpus:
             l_e = len(es)
             l_f = len(fs)
@@ -64,17 +67,14 @@ def _train(corpus, loop_count=1000):
                     count_a[(i, j, l_e, l_f)] += c
                     total_a[(j, l_e, l_f)] += c
 
-        for k, v in total.items():
-            if v == 0:
-                print(k, v)
+        #for k, v in total.items():
+        #    if v == 0:
+        #        print(k, v)
         # estimate probability
         for (e, f) in count.keys():
             try:
                 t[(e, f)] = count[(e, f)] / total[f]
-                #print(u"e: {e}, f: {f}, count[(e, f)]: {ef}, total[f]: \
-                #      {totalf}".format(e=e, f=f, ef=count[(e, f)],
-                #                       totalf=total[f]))
-            except ZeroDivisionError:
+            except decimal.DivisionByZero:
                 print(u"e: {e}, f: {f}, count[(e, f)]: {ef}, total[f]: \
                       {totalf}".format(e=e, f=f, ef=count[(e, f)],
                                        totalf=total[f]))
@@ -86,8 +86,8 @@ def _train(corpus, loop_count=1000):
 
 
 def train(sentences, loop_count=1000):
-    for i, j in sentences:
-        print(i, j)
+    #for i, j in sentences:
+    #    print(i, j)
     corpus = utility.mkcorpus(sentences)
     return _train(corpus, loop_count)
 

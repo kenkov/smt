@@ -103,13 +103,13 @@ def create_train_db(transfrom=2,
         for (_to, _from), prob in t.items():
             session.add(WordProbability(transto=_to,
                                         transfrom=_from,
-                                        prob=prob))
+                                        prob=float(prob)))
         for (from_pos, to_pos, to_len, from_len), prob in a.items():
             session.add(WordAlignment(from_pos=from_pos,
                                       to_pos=to_pos,
                                       to_len=to_len,
                                       from_len=from_len,
-                                      prob=prob))
+                                      prob=float(prob)))
         session.commit()
 
 
