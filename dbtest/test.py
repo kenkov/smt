@@ -10,7 +10,7 @@ if __name__ == '__main__':
     sentence = u"I like him"
     #sentence = u"the tourism initiative addresses this\
     #    for the first time"
-    db = "sqlite:///:jec_log_basic:"
+    db = "sqlite:///:test:"
 
     stacks = stack_decoder(sentence,
                            transfrom=2,

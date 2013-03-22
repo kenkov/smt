@@ -89,7 +89,7 @@ if __name__ == '__main__':
     import keitaiso
     # new
     limit = None
-    loop_count = 10000
+    loop_count = 10
     db = ":test:"
     excel_convert(db="sqlite:///{0}".format(db))
     createdb(db=db,
