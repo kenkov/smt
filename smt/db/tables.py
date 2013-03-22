@@ -9,7 +9,7 @@ from sqlalchemy import Column, TEXT, REAL, INTEGER
 
 class Tables(object):
 
-    def get_sentence_table(tablename="sentence"):
+    def get_sentence_table(self, tablename="sentence"):
 
         class Sentence(declarative_base()):
             __tablename__ = tablename
@@ -19,7 +19,7 @@ class Tables(object):
 
         return Sentence
 
-    def get_wordprobability_table(tablename):
+    def get_wordprobability_table(self, tablename):
 
         class WordProbability(declarative_base()):
             __tablename__ = tablename
@@ -30,7 +30,7 @@ class Tables(object):
 
         return WordProbability
 
-    def get_wordalignment_table(tablename):
+    def get_wordalignment_table(self, tablename):
 
         class WordAlignment(declarative_base()):
             __tablename__ = tablename
@@ -43,7 +43,7 @@ class Tables(object):
 
         return WordAlignment
 
-    def get_phrase_table(tablename):
+    def get_phrase_table(self, tablename="phrase"):
 
         class Phrase(declarative_base()):
             __tablename__ = tablename
@@ -53,7 +53,7 @@ class Tables(object):
 
         return Phrase
 
-    def get_transphraseprob_table(tablename):
+    def get_transphraseprob_table(self, tablename="phraseprob"):
 
         class TransPhraseProb(declarative_base()):
             __tablename__ = tablename
@@ -64,3 +64,38 @@ class Tables(object):
             p2_1 = Column(REAL)
 
         return TransPhraseProb
+
+    def get_trigram_table(self, tablename):
+
+        class Trigram(declarative_base()):
+            __tablename__ = tablename
+            id = Column(INTEGER, primary_key=True)
+            first = Column(TEXT)
+            second = Column(TEXT)
+            third = Column(TEXT)
+            count = Column(INTEGER)
+
+        return Trigram
+
+    def get_trigramprob_table(self, tablename):
+
+        class TrigramProb(declarative_base()):
+            __tablename__ = tablename
+            id = Column(INTEGER, primary_key=True)
+            first = Column(TEXT)
+            second = Column(TEXT)
+            third = Column(TEXT)
+            prob = Column(REAL)
+
+        return TrigramProb
+
+    def get_trigramprobwithoutlast_table(self, tablename):
+
+        class TrigramProbWithoutLast(declarative_base()):
+            __tablename__ = tablename
+            id = Column(INTEGER, primary_key=True)
+            first = Column(TEXT)
+            second = Column(TEXT)
+            prob = Column(REAL)
+
+        return TrigramProbWithoutLast

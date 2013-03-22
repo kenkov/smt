@@ -8,21 +8,13 @@ from smt.ibmmodel import ibmmodel2
 from smt.phrase import word_alignment
 from smt.phrase import phrase_extract
 from progressline import ProgressLine
+from tables import Tables
 # import SQLAlchemy
 import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
-from sqlalchemy import Column, TEXT, REAL, INTEGER
 from sqlalchemy.orm import sessionmaker
 import sqlite3
 import math
-
-
-class Sentence(declarative_base()):
-    __tablename__ = 'sentence'
-    id = Column(INTEGER, primary_key=True)
-    lang1 = Column(TEXT)
-    lang2 = Column(TEXT)
 
 
 def create_corpus(db="sqlite:///:memory:",
@@ -33,6 +25,8 @@ def create_corpus(db="sqlite:///:memory:",
     # create session
     Session = sessionmaker(bind=engine)
     session = Session()
+
+    Sentence = Tables().get_sentence_table()
 
     query = session.query(Sentence)[:limit] if limit \
         else session.query(Sentence)
@@ -54,29 +48,13 @@ def create_train_db(transfrom=2,
     Session = sessionmaker(bind=engine)
     session = Session()
 
+    # tablenames
     table_prefix = "from{0}to{1}".format(transfrom, transto)
     wordprob_tablename = table_prefix + "_" + "wordprob"
     wordalign_tablename = table_prefix + "_" + "wordalign"
-
-    _BaseProb = declarative_base()
-    _BaseAlign = declarative_base()
-
-    class WordProbability(_BaseProb):
-        __tablename__ = wordprob_tablename
-        id = Column(INTEGER, primary_key=True)
-        transto = Column(TEXT)
-        transfrom = Column(TEXT)
-        prob = Column(REAL)
-
-    class WordAlignment(_BaseAlign):
-        __tablename__ = wordalign_tablename
-        id = Column(INTEGER, primary_key=True)
-        from_pos = Column(INTEGER)
-        to_pos = Column(INTEGER)
-        to_len = Column(INTEGER)
-        from_len = Column(INTEGER)
-        prob = Column(REAL)
-
+    # tables
+    WordProbability = Tables().get_wordprobability_table(wordprob_tablename)
+    WordAlignment = Tables().get_wordalignment_table(wordalign_tablename)
     # create table for word probability
     WordProbability.__table__.drop(engine, checkfirst=True)
     WordProbability.__table__.create(engine)
@@ -130,28 +108,13 @@ def db_viterbi_alignment(es, fs,
     Session = sessionmaker(bind=engine)
     session = Session()
 
+    # tablenames
     table_prefix = "from{0}to{1}".format(transfrom, transto)
     wordprob_tablename = table_prefix + "_" + "wordprob"
     wordalign_tablename = table_prefix + "_" + "wordalign"
-
-    _BaseProb = declarative_base()
-    _BaseAlign = declarative_base()
-
-    class WordProbability(_BaseProb):
-        __tablename__ = wordprob_tablename
-        id = Column(INTEGER, primary_key=True)
-        transto = Column(TEXT)
-        transfrom = Column(TEXT)
-        prob = Column(REAL)
-
-    class WordAlignment(_BaseAlign):
-        __tablename__ = wordalign_tablename
-        id = Column(INTEGER, primary_key=True)
-        from_pos = Column(INTEGER)
-        to_pos = Column(INTEGER)
-        to_len = Column(INTEGER)
-        from_len = Column(INTEGER)
-        prob = Column(REAL)
+    # tables
+    WordProbability = Tables().get_wordprobability_table(wordprob_tablename)
+    WordAlignment = Tables().get_wordalignment_table(wordalign_tablename)
 
     def get_wordprob(e, f, init_val=1.0e-10):
 
@@ -267,23 +230,9 @@ def create_phrase_db(limit=None,
     # create session
     Session = sessionmaker(bind=engine)
     session = Session()
-    table_name = "phrase"
-
-    _Base = declarative_base()
-
-    class Sentence(_Base):
-        __tablename__ = 'sentence'
-        id = Column(INTEGER, primary_key=True)
-        lang1 = Column(TEXT)
-        lang2 = Column(TEXT)
-
-    _BasePhrase = declarative_base()
-
-    class Phrase(_BasePhrase):
-        __tablename__ = table_name
-        id = Column(INTEGER, primary_key=True)
-        lang1p = Column(TEXT)
-        lang2p = Column(TEXT)
+    # tables
+    Sentence = Tables().get_sentence_table()
+    Phrase = Tables().get_phrase_table()
 
     # create table for word probability
     Phrase.__table__.drop(engine, checkfirst=True)
@@ -371,16 +320,8 @@ def create_phrase_prob(db=":memory:"):
     # create session
     Session = sessionmaker(bind=engine)
     session = Session()
-
-    _Base = declarative_base()
-
-    class TransPhraseProb(_Base):
-        __tablename__ = table_name
-        id = Column(INTEGER, primary_key=True)
-        lang1p = Column(TEXT)
-        lang2p = Column(TEXT)
-        p1_2 = Column(REAL)
-        p2_1 = Column(REAL)
+    # tables
+    TransPhraseProb = Tables().get_transphraseprob_table()
 
     # create table for word probability
     TransPhraseProb.__table__.drop(engine, checkfirst=True)

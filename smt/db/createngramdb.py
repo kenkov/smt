@@ -5,12 +5,10 @@ from __future__ import division, print_function
 import collections
 import sqlite3
 # import SQLAlchemy
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
-from sqlalchemy import Column, TEXT, INTEGER, REAL
 from sqlalchemy.orm import sessionmaker
 # smt
-from smt.db.createdb import Sentence
+from smt.db.tables import Tables
 from smt.langmodel.ngram import ngram
 import math
 
@@ -22,6 +20,7 @@ def _create_ngram_count_db(lang, langmethod=lambda x: x,
     Session = sessionmaker(bind=engine)
     session = Session()
 
+    Sentence = Tables().get_sentence_table()
     query = session.query(Sentence)
 
     ngram_dic = collections.defaultdict(float)
@@ -45,14 +44,9 @@ def create_ngram_count_db(lang, langmethod=lambda x: x,
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    class Trigram(declarative_base()):
-        __tablename__ = 'lang{}trigram'.format(lang)
-        id = Column(INTEGER, primary_key=True)
-        first = Column(TEXT)
-        second = Column(TEXT)
-        third = Column(TEXT)
-        count = Column(INTEGER)
-
+    # trigram table
+    tablename = 'lang{}trigram'.format(lang)
+    Trigram = Tables().get_trigram_table(tablename)
     # create table
     Trigram.__table__.drop(engine, checkfirst=True)
     Trigram.__table__.create(engine)
@@ -99,28 +93,16 @@ def create_ngram_prob(lang,
     con = sqlite3.connect(db)
     cur = con.cursor()
 
-    class Trigram(declarative_base()):
-        __tablename__ = 'lang{}trigram'.format(lang)
-        id = Column(INTEGER, primary_key=True)
-        first = Column(TEXT)
-        second = Column(TEXT)
-        third = Column(TEXT)
-        count = Column(INTEGER)
+    trigram_tablename = 'lang{}trigram'.format(lang)
+    trigramprob_tablename = 'lang{}trigramprob'.format(lang)
+    trigramprobwithoutlast_tablename = 'lang{}trigramprob_without_last'\
+        .format(lang)
 
-    class TrigramProb(declarative_base()):
-        __tablename__ = 'lang{}trigramprob'.format(lang)
-        id = Column(INTEGER, primary_key=True)
-        first = Column(TEXT)
-        second = Column(TEXT)
-        third = Column(TEXT)
-        prob = Column(REAL)
-
-    class TrigramProbWithoutLast(declarative_base()):
-        __tablename__ = 'lang{}trigramprob_without_last'.format(lang)
-        id = Column(INTEGER, primary_key=True)
-        first = Column(TEXT)
-        second = Column(TEXT)
-        prob = Column(REAL)
+    # tables
+    Trigram = Tables().get_trigram_table(trigram_tablename)
+    TrigramProb = Tables().get_trigramprob_table(trigramprob_tablename)
+    TrigramProbWithoutLast = Tables().get_trigramprobwithoutlast_table(
+        trigramprobwithoutlast_tablename)
 
     # create connection in SQLAlchemy
     sqlalchemydb = "sqlite:///{}".format(db)
