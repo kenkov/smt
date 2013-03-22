@@ -13,8 +13,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, TEXT, REAL, INTEGER
 
 # import smt module
-from smt.db.createdb import Sentence
+import smt.db.tables as tables
 import math
+
+Sentence = tables.Tables().get_sentence_table()
 
 
 def excel_convert(db="sqlite:///:memory:",
