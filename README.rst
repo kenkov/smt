@@ -7,17 +7,17 @@ IMB models of statistical mathine translation
 Files
 =======
 
-ibmmodel1.py
-    implements IBM Model1
+::
 
-ibmmodel2.py
-    implements IBM Model2
+    smt/
+        db/
+            modules for creating database
+        decoder/
+            stackdecoder
+        ibmmodel/
+            IBM models
+        langmodel/
+            Languages models such as ngram
+        phrase/
+            Phrase extract modules
 
-word_alignment.py
-    implements symmetrization of word alignments
-
-
-Usege
-======
-
-See each file and test codes written in test.py
