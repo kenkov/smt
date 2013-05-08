@@ -99,3 +99,23 @@ class Tables(object):
             prob = Column(REAL)
 
         return TrigramProbWithoutLast
+
+    def get_unigram_table(self, tablename):
+
+        class Unigram(declarative_base()):
+            __tablename__ = tablename
+            id = Column(INTEGER, primary_key=True)
+            first = Column(TEXT)
+            count = Column(INTEGER)
+
+        return Unigram
+
+    def get_unigramprob_table(self, tablename):
+
+        class UnigramProb(declarative_base()):
+            __tablename__ = tablename
+            id = Column(INTEGER, primary_key=True)
+            first = Column(TEXT)
+            prob = Column(REAL)
+
+        return UnigramProb

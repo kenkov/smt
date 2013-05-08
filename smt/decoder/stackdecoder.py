@@ -9,6 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy import Column, TEXT, REAL, INTEGER
 from sqlalchemy.orm import sessionmaker
+from smt.db.tables import Tables
 #from pprint import pprint
 
 
@@ -525,13 +526,7 @@ def _get_total_number(transto=1, db="sqlite:///:memory:"):
     return v
     """
 
-    class Trigram(declarative_base()):
-        __tablename__ = 'lang{}trigram'.format(transto)
-        id = Column(INTEGER, primary_key=True)
-        first = Column(TEXT)
-        second = Column(TEXT)
-        third = Column(TEXT)
-        count = Column(INTEGER)
+    Trigram = Tables().get_trigram_table('lang{}trigram'.format(transto))
 
     # create connection in SQLAlchemy
     engine = create_engine(db)
@@ -541,9 +536,8 @@ def _get_total_number(transto=1, db="sqlite:///:memory:"):
 
     # calculate total number
     query = session.query(Trigram)
-    totalnumber = len(query.all())
 
-    return totalnumber
+    return len(list(query))
 
 
 def language_model(first, second, third, totalnumber, transto=1,
@@ -640,6 +634,53 @@ def _create_estimate_dict(sentences,
     return comp_dic
 
 
+def _get_total_number_for_fce(transto=1, db="sqlite:///:memory:"):
+    """
+    return v
+    """
+    # create connection in SQLAlchemy
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    tablename = 'lang{}unigram'.format(transto)
+    Unigram = Tables().get_unigram_table(tablename)
+
+    # calculate total number
+    query = session.query(Unigram)
+    sm = 0
+    totalnumber = 0
+    for item in query:
+        totalnumber += 1
+        sm += item.count
+    return {'totalnumber': totalnumber,
+            'sm': sm}
+
+
+def _future_cost_langmodel(word,
+                           tn,
+                           transfrom=2,
+                           transto=1,
+                           alpha=0.00017,
+                           db="sqlite:///:memory:"):
+    tablename = "lang{}unigramprob".format(transto)
+    # create session
+    engine = create_engine(db)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    UnigramProb = Tables().get_unigramprob_table(tablename)
+    query = session.query(UnigramProb).filter_by(first=word)
+    try:
+        item = query.one()
+        return item.prob
+    except sqlalchemy.orm.exc.NoResultFound:
+        sm = tn['sm']
+        totalnumber = tn['totalnumber']
+        return math.log(alpha) - math.log(sm + alpha*totalnumber)
+
+
 def future_cost_estimate(sentences,
                          transfrom=2,
                          transto=1,
@@ -653,7 +694,7 @@ def future_cost_estimate(sentences,
     phrases = available_phrases(sentences,
                                 db=db)
 
-    #sentences_with_index = list(enumerate(sentences, 1))
+    tn = _get_total_number_for_fce(transto=transto, db=db)
     covered = {}
     for phrase in phrases:
         phrase_str = u" ".join(zip(*phrase)[1])
@@ -673,13 +714,20 @@ def future_cost_estimate(sentences,
             end = zip(*phrase)[0][-1]
             pos = (start, end)
             if transfrom == 2 and transto == 1:
-                covered[pos] = val.p2_1
-                    # + language_model()
+                fcl = _future_cost_langmodel(word=val.lang1p.split()[0],
+                                             tn=tn,
+                                             transfrom=transfrom,
+                                             transto=transto,
+                                             alpha=0.00017,
+                                             db=db)
+                print(val.lang1p.split()[0], fcl)
+                covered[pos] = val.p2_1 + fcl
             if transfrom == 1 and transto == 2:
                 covered[pos] = val.p1_2
                     # + language_model()
     # estimate future costs
     phrase_prob = _create_estimate_dict(sentences, covered)
+    print(phrase_prob)
 
     return _future_cost_estimate(sentences,
                                  phrase_prob)

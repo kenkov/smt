@@ -64,6 +64,41 @@ def create_ngram_count_db(lang, langmethod=lambda x: x,
     session.commit()
 
 
+def create_unigram_count_db(lang, langmethod=lambda x: x,
+                            db="sqilte:///:memory:"):
+    engine = create_engine(db)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    # trigram table
+    tablename = 'lang{}unigram'.format(lang)
+    Sentence = Tables().get_sentence_table()
+    Unigram = Tables().get_unigram_table(tablename)
+    # create table
+    Unigram.__table__.drop(engine, checkfirst=True)
+    Unigram.__table__.create(engine)
+
+    query = session.query(Sentence)
+    ngram_dic = collections.defaultdict(int)
+    for item in query:
+        if lang == 1:
+            sentences = langmethod(item.lang1).split()
+        elif lang == 2:
+            sentences = langmethod(item.lang2).split()
+        ngrams = ngram(sentences, 1)
+        for tpl in ngrams:
+            ngram_dic[tpl] += 1
+
+    # insert items
+    for (first,), count in ngram_dic.items():
+        print(u"inserting {}: {}".format(first, count))
+        item = Unigram(first=first,
+                       count=count)
+        session.add(item)
+    session.commit()
+
+
 # create views using SQLite3
 def create_ngram_count_without_last_view(lang, db=":memory:"):
     # create phrase_count table
@@ -175,6 +210,58 @@ def create_ngram_prob(lang,
     session.commit()
 
 
+def create_unigram_prob(lang, db=":memory:"):
+
+    unigram_tablename = 'lang{}unigram'.format(lang)
+    unigramprob_tablename = 'lang{}unigramprob'.format(lang)
+
+    # tables
+    Unigram = Tables().get_unigram_table(unigram_tablename)
+    UnigramProb = Tables().get_unigramprob_table(unigramprob_tablename)
+
+    # create engine
+    sqlalchemydb = "sqlite:///{}".format(db)
+    engine = create_engine(sqlalchemydb)
+    # create session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    # create table
+    UnigramProb.__table__.drop(engine, checkfirst=True)
+    UnigramProb.__table__.create(engine)
+
+    # calculate total number
+    query = session.query(Unigram)
+    sm = 0
+    totalnumber = 0
+    for item in query:
+        totalnumber += 1
+        sm += item.count
+
+    # get trigrams
+    query = session.query(Unigram)
+    for item in query:
+        first = item.first
+        count = item.count
+
+        alpha = 0.00017
+        c = count
+        v = totalnumber
+        # create logprob
+        logprob = math.log((c + alpha) / (sm + alpha * v))
+        print(u"{}:\
+              log({}+{} / {} + {}*{}) = {}".format(first,
+                                                   c,
+                                                   alpha,
+                                                   sm,
+                                                   alpha,
+                                                   v,
+                                                   logprob))
+        unigramprob = UnigramProb(first=first,
+                                  prob=logprob)
+        session.add(unigramprob)
+    session.commit()
+
+
 def create_ngram_db(lang, langmethod=lambda x: x,
                     n=3, db=":memory:"):
 
@@ -184,6 +271,10 @@ def create_ngram_db(lang, langmethod=lambda x: x,
                           db=sqlalchemydb)
     create_ngram_count_without_last_view(lang=lang, db=db)
     create_ngram_prob(lang=lang, db=db)
+
+    create_unigram_count_db(lang=lang, langmethod=langmethod,
+                            db=sqlalchemydb)
+    create_unigram_prob(lang=lang, db=db)
 
 
 if __name__ == '__main__':
