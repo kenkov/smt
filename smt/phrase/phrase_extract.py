@@ -92,7 +92,7 @@ if __name__ == '__main__':
     #pprint(phrase_extract(es, fs, alignment))
 
     # test2
-    from utility import mkcorpus
+    from smt.utils.utility import mkcorpus
     from word_alignment import symmetrization
     sentenses = [("僕 は 男 です", "I am a man"),
                  ("私 は 女 です", "I am a girl"),

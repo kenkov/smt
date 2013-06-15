@@ -4,7 +4,7 @@
 from __future__ import division, print_function
 import collections
 import ibmmodel1
-import utility
+from smt.utils import utility
 import decimal
 from decimal import Decimal as D
 

@@ -7,7 +7,7 @@ from smt.phrase.word_alignment import symmetrization
 from smt.phrase.phrase_extract import extract
 from smt.phrase.phrase_extract import phrase_extract
 from smt.phrase.phrase_extract import available_phrases
-from utility import mkcorpus
+from smt.utils.utility import mkcorpus
 
 
 class WordAlignmentTest(unittest.TestCase):

@@ -109,14 +109,14 @@ if __name__ == '__main__':
            (4, 7), (7, 8), (9, 9), (6, 10)]
     f2e = [(1, 1), (2, 2), (3, 6), (4, 7), (7, 8),
            (8, 8), (9, 9), (5, 10), (6, 10)]
-    from utility import matrix
+    from smt.utils.utility import matrix
     print(matrix(len(es), len(fs), e2f))
     print(matrix(len(es), len(fs), f2e))
     ali = _alignment(es, fs, e2f, f2e)
     print(matrix(len(es), len(fs), ali))
 
     # test for symmetrization
-    from utility import mkcorpus
+    from smt.utils.utility import mkcorpus
     sentenses = [("僕 は 男 です", "I am a man"),
                  ("私 は 女 です", "I am a girl"),
                  ("私 は 先生 です", "I am a teacher"),

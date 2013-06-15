@@ -5,8 +5,8 @@ from __future__ import division, print_function
 from operator import itemgetter
 import collections
 from pprint import pprint
+from smt.utils import utility
 import itertools
-import utility
 import decimal
 from decimal import Decimal as D
 
