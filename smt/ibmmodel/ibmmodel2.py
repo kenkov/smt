@@ -1,9 +1,8 @@
 #! /usr/bin/env python
 # coding:utf-8
 
-from __future__ import division, print_function
 import collections
-import ibmmodel1
+from smt.ibmmodel import ibmmodel1
 from smt.utils import utility
 import decimal
 from decimal import Decimal as D
@@ -41,7 +40,7 @@ def _train(corpus, loop_count=1000):
     a = _keydefaultdict(key_fun)
 
     # loop
-    for _i in xrange(loop_count):
+    for _i in range(loop_count):
         # variables for estimating t
         count = collections.defaultdict(D)
         total = collections.defaultdict(D)
