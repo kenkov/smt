@@ -1,12 +1,9 @@
 #! /usr/bin/env python
 # coding:utf-8
 
-from __future__ import division, print_function
 from operator import itemgetter
 import collections
-from pprint import pprint
 from smt.utils import utility
-import itertools
 import decimal
 from decimal import Decimal as D
 
@@ -17,7 +14,8 @@ decimal.getcontext().rounding = decimal.ROUND_HALF_UP
 
 def _constant_factory(value):
     '''define a local function for uniform probability initialization'''
-    return itertools.repeat(value).next
+    #return itertools.repeat(value).next
+    return lambda: value
 
 
 def _train(corpus, loop_count=1000):
@@ -29,7 +27,7 @@ def _train(corpus, loop_count=1000):
     t = collections.defaultdict(_constant_factory(D(1/len(f_keys))))
 
     # loop
-    for i in xrange(loop_count):
+    for i in range(loop_count):
         count = collections.defaultdict(D)
         total = collections.defaultdict(D)
         s_total = collections.defaultdict(D)
