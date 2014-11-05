@@ -62,16 +62,61 @@ def _pprint(tbl):
         print(u"p({e}|{f}) = {v}".format(e=e, f=f, v=v))
 
 
+def test_train_loop1():
+    sent_pairs = [("the house", "das Haus"),
+                  ("the book", "das Buch"),
+                  ("a book", "ein Buch"),
+                  ]
+    #t0 = train(sent_pairs, loop_count=0)
+    t1 = train(sent_pairs, loop_count=1)
+
+    loop1 = [(('house', 'Haus'), D("0.5")),
+             (('book', 'ein'), D("0.5")),
+             (('the', 'das'), D("0.5")),
+             (('the', 'Buch'), D("0.25")),
+             (('book', 'Buch'), D("0.5")),
+             (('a', 'ein'), D("0.5")),
+             (('book', 'das'), D("0.25")),
+             (('the', 'Haus'), D("0.5")),
+             (('house', 'das'), D("0.25")),
+             (('a', 'Buch'), D("0.25"))]
+    # assertion
+    # next assertion doesn't make sence because
+    # initialized by defaultdict
+    #self.assertEqual(self._format(t0.items()), self._format(loop0))
+    assert set(t1.items()) == set(loop1)
+
+
+def test_train_loop2():
+    sent_pairs = [("the house", "das Haus"),
+                  ("the book", "das Buch"),
+                  ("a book", "ein Buch"),
+                  ]
+    #t0 = train(sent_pairs, loop_count=0)
+    t2 = train(sent_pairs, loop_count=2)
+
+    loop2 = [(('house', 'Haus'), D("0.5713")),
+             (('book', 'ein'), D("0.4284")),
+             (('the', 'das'), D("0.6367")),
+             (('the', 'Buch'), D("0.1818")),
+             (('book', 'Buch'), D("0.6367")),
+             (('a', 'ein'), D("0.5713")),
+             (('book', 'das'), D("0.1818")),
+             (('the', 'Haus'), D("0.4284")),
+             (('house', 'das'), D("0.1818")),
+             (('a', 'Buch'), D("0.1818"))]
+    # assertion
+    # next assertion doesn't make sence because
+    # initialized by defaultdict
+    #self.assertEqual(self._format(t0.items()), self._format(loop0))
+    assert set(t2.items()) == set(loop2)
+
+
 if __name__ == '__main__':
-    sentences = [("the house", "das Haus"),
-                 ("the book", "das Buch"),
-                 ("a book", "ein Buch"),
-                 ]
-    t = train(sentences, loop_count=0)
-    pprint(t)
-    t = train(sentences, loop_count=1)
-    pprint(t)
-    t = train(sentences, loop_count=2)
-    pprint(t)
+    import sys
+
+    fd = open(sys.argv[1]) if len(sys.argv) >= 2 else sys.stdin
+    sentences = [line.strip().split('|||') for line in fd.readlines()]
     t = train(sentences, loop_count=3)
-    pprint(t)
+    for (e, f), val in t.items():
+        print("{} {}\t{}".format(e, f, val))
