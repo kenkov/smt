@@ -139,6 +139,20 @@ def show_matrix(es, fs, t, a):
     return utility.matrix(m, n, max_a)
 
 
+
+def test_viterbi_alignment():
+    x = viterbi_alignment([1, 2, 1],
+                          [2, 3, 2],
+                          collections.defaultdict(int),
+                          collections.defaultdict(int))
+    # Viterbi_alignment selects the first token
+    # if t or a doesn't contain the key.
+    # This means it returns NULL token
+    # in such a situation.
+    ans = {1: 1, 2: 1, 3: 1}
+    assert dict(x) == ans
+
+
 if __name__ == '__main__':
     #sentences = [("the house", "das Haus"),
     #              ("the book", "das Buch"),
