@@ -1,9 +1,6 @@
 #! /usr/bin/env python
 # coding:utf-8
 
-from __future__ import division, print_function
-from pprint import pprint
-
 
 def phrase_extract(es, fs, alignment):
     ext = extract(es, fs, alignment)
@@ -48,10 +45,10 @@ def _extract(es, fs, e_start, e_end, f_start, f_end, alignment):
         while True:
             ex.add((e_start, e_end, f_s, f_e))
             f_e += 1
-            if f_e in zip(*alignment)[1] or f_e > len(fs):
+            if f_e in list(zip(*alignment))[1] or f_e > len(fs):
                 break
         f_s -= 1
-        if f_s in zip(*alignment)[1] or f_s < 1:
+        if f_s in list(zip(*alignment))[1] or f_s < 1:
             break
     return ex
 
@@ -72,6 +69,41 @@ def available_phrases(fs, phrases):
             if f_rest in phrases:
                 available.add(tuple(enumerate(f_rest, i+1)))
     return available
+
+
+def test_available_phrases():
+    from smt.utils.utility import mkcorpus
+    from smt.phrase.word_alignment import symmetrization
+
+    sentenses = [("僕 は 男 です", "I am a man"),
+                 ("私 は 女 です", "I am a girl"),
+                 ("私 は 先生 です", "I am a teacher"),
+                 ("彼女 は 先生 です", "She is a teacher"),
+                 ("彼 は 先生 です", "He is a teacher"),
+                 ]
+
+    corpus = mkcorpus(sentenses)
+    es, fs = ("私 は 先生 です".split(), "I am a teacher".split())
+    alignment = symmetrization(es, fs, corpus)
+    ext = phrase_extract(es, fs, alignment)
+    ans = ("は 先生 です <-> a teacher",
+           "先生 <-> teacher"
+           "私 <-> I am"
+           "私 は 先生 です <-> I am a teacher")
+    for e, f in ext:
+        print("{} {} {}".format(' '.join(e), "<->", ' '.join(f)))
+
+    ## phrases
+    fs = "I am a teacher".split()
+    phrases = available_phrases(fs, [fs_ph for (es_ph, fs_ph) in ext])
+    print(phrases)
+    ans = {((1, 'I'), (2, 'am')),
+           ((1, 'I'), (2, 'am'), (3, 'a'), (4, 'teacher')),
+           ((4, 'teacher'),),
+           ((3, 'a'), (4, 'teacher'))}
+
+    phrases = available_phrases(fs, [fs_ph for (es_ph, fs_ph) in ext])
+    assert ans == phrases
 
 
 if __name__ == '__main__':
@@ -104,15 +136,10 @@ if __name__ == '__main__':
     es, fs = ("私 は 先生 です".split(), "I am a teacher".split())
     alignment = symmetrization(es, fs, corpus)
     ext = phrase_extract(es, fs, alignment)
-    pprint(ext)
     for e, f in ext:
         print(' '.join(e), "<->", ' '.join(f))
 
     ## phrases
     fs = "I am a teacher".split()
-    phrases = set([("I", "am"),
-                   ("a", "teacher"),
-                   ("teacher",),
-                   ("I", "am", "a", "teacher")])
     phrases = available_phrases(fs, [fs_ph for (es_ph, fs_ph) in ext])
     print(phrases)
