@@ -1,9 +1,6 @@
 #! /usr/bin/env python
 # coding:utf-8
 
-from __future__ import division, print_function
-from pprint import pprint
-
 
 def phrase_extract(es, fs, alignment):
     ext = extract(es, fs, alignment)
@@ -48,10 +45,10 @@ def _extract(es, fs, e_start, e_end, f_start, f_end, alignment):
         while True:
             ex.add((e_start, e_end, f_s, f_e))
             f_e += 1
-            if f_e in zip(*alignment)[1] or f_e > len(fs):
+            if f_e in list(zip(*alignment))[1] or f_e > len(fs):
                 break
         f_s -= 1
-        if f_s in zip(*alignment)[1] or f_s < 1:
+        if f_s in list(zip(*alignment))[1] or f_s < 1:
             break
     return ex
 
@@ -104,15 +101,10 @@ if __name__ == '__main__':
     es, fs = ("私 は 先生 です".split(), "I am a teacher".split())
     alignment = symmetrization(es, fs, corpus)
     ext = phrase_extract(es, fs, alignment)
-    pprint(ext)
     for e, f in ext:
         print(' '.join(e), "<->", ' '.join(f))
 
     ## phrases
     fs = "I am a teacher".split()
-    phrases = set([("I", "am"),
-                   ("a", "teacher"),
-                   ("teacher",),
-                   ("I", "am", "a", "teacher")])
     phrases = available_phrases(fs, [fs_ph for (es_ph, fs_ph) in ext])
     print(phrases)
