@@ -71,7 +71,7 @@ def available_phrases(fs, phrases):
     return available
 
 
-def test_available_phrases():
+def test_phrases():
     from smt.utils.utility import mkcorpus
     from smt.phrase.word_alignment import symmetrization
 
@@ -107,39 +107,34 @@ def test_available_phrases():
 
 
 if __name__ == '__main__':
-    # test 1
-    #es = "michael assumes that he will stay in the house".split()
-    #fs = "michael geht davon aus , dass er im haus bleibt".split()
-    #alignment = set([(1, 1),
-    #                 (2, 2),
-    #                 (2, 3),
-    #                 (2, 4),
-    #                 (3, 6),
-    #                 (4, 7),
-    #                 (5, 10),
-    #                 (6, 10),
-    #                 (7, 8),
-    #                 (8, 8),
-    #                 (9, 9)])
-    #pprint(phrase_extract(es, fs, alignment))
 
     # test2
     from smt.utils.utility import mkcorpus
-    from word_alignment import symmetrization
-    sentenses = [("僕 は 男 です", "I am a man"),
-                 ("私 は 女 です", "I am a girl"),
-                 ("私 は 先生 です", "I am a teacher"),
-                 ("彼女 は 先生 です", "She is a teacher"),
-                 ("彼 は 先生 です", "He is a teacher"),
-                 ]
+    from word_alignment import alignment
+    from smt.ibmmodel import ibmmodel2
+    import sys
+    modelfd = open(sys.argv[1])
+    sentenses = [line.rstrip().split('|||') for line in modelfd.readlines()]
+    # make corpus
     corpus = mkcorpus(sentenses)
-    es, fs = ("私 は 先生 です".split(), "I am a teacher".split())
-    alignment = symmetrization(es, fs, corpus)
-    ext = phrase_extract(es, fs, alignment)
-    for e, f in ext:
-        print(' '.join(e), "<->", ' '.join(f))
 
-    ## phrases
-    fs = "I am a teacher".split()
-    phrases = available_phrases(fs, [fs_ph for (es_ph, fs_ph) in ext])
-    print(phrases)
+    f2e_train = ibmmodel2._train(corpus, loop_count=10)
+    e2f_corpus = list(zip(*reversed(list(zip(*corpus)))))
+    e2f_train = ibmmodel2._train(e2f_corpus, loop_count=10)
+
+    for line in sys.stdin:
+        _es, _fs = line.rstrip().split("|||")
+        es = _es.split()
+        fs = _fs.split()
+
+        f2e = ibmmodel2.viterbi_alignment(es, fs, *f2e_train).items()
+        e2f = ibmmodel2.viterbi_alignment(fs, es, *e2f_train).items()
+
+        align = alignment(es, fs, e2f, f2e)  # symmetrized alignment
+
+        #from smt.utils.utility import matrix
+        #print(matrix(len(es), len(fs), align, es, fs))
+
+        ext = phrase_extract(es, fs, align)
+        for e, f in ext:
+            print("{}|||{}".format(''.join(e), ''.join(f)))
