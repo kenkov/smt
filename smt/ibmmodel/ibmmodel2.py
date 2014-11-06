@@ -136,7 +136,7 @@ def show_matrix(es, fs, t, a):
     max_a = viterbi_alignment(es, fs, t, a).items()
     m = len(es)
     n = len(fs)
-    return utility.matrix(m, n, max_a)
+    return utility.matrix(m, n, max_a, es, fs)
 
 
 
@@ -154,17 +154,14 @@ def test_viterbi_alignment():
 
 
 if __name__ == '__main__':
-    #sentences = [("the house", "das Haus"),
-    #              ("the book", "das Buch"),
-    #              ("a book", "ein Buch"),
-    #              ]
-    print(utility.matrix(2, 3, [(1, 1), (2, 3)]))
-    sentences = [("僕 は 男 です", "I am a man"),
-                 ("私 は 女 です", "I am a girl"),
-                 ("私 は 先生 です", "I am a teacher"),
-                 ("彼女 は 先生 です", "She is a teacher"),
-                 ("彼 は 先生 です", "He is a teacher"),
-                 ]
+    import sys
+
+    fd = open(sys.argv[1]) if len(sys.argv) >= 2 else sys.stdin
+    sentences = [line.strip().split('|||') for line in fd.readlines()]
     t, a = train(sentences, loop_count=100)
-    args = ("私 は 先生 です".split(), "I am a teacher".split(), t, a)
+
+    es = "私 は 先生 です".split()
+    fs = "I am a teacher".split()
+    args = (es, fs, t, a)
+
     print(show_matrix(*args))
