@@ -91,11 +91,11 @@ def symmetrization(es, fs, corpus):
     return
         alignment **from fs to es**
     '''
-    f2e_train = ibmmodel2._train(corpus, loop_count=1000)
+    f2e_train = ibmmodel2._train(corpus, loop_count=10)
     f2e = ibmmodel2.viterbi_alignment(es, fs, *f2e_train).items()
 
     e2f_corpus = list(zip(*reversed(list(zip(*corpus)))))
-    e2f_train = ibmmodel2._train(e2f_corpus, loop_count=1000)
+    e2f_train = ibmmodel2._train(e2f_corpus, loop_count=10)
     e2f = ibmmodel2.viterbi_alignment(fs, es, *e2f_train).items()
 
     return alignment(es, fs, e2f, f2e)

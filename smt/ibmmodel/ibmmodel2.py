@@ -81,6 +81,12 @@ def _train(corpus, loop_count=1000):
         for (i, j, l_e, l_f) in count_a.keys():
             a[(i, j, l_e, l_f)] = count_a[(i, j, l_e, l_f)] / \
                 total_a[(j, l_e, l_f)]
+    # output
+    #for (e, f), val in t.items():
+    #    print("{} {}\t{}".format(e, f, float(val)))
+    #for (i, j, l_e, l_f), val in a.items():
+    #    print("{} {} {} {}\t{}".format(i, j, l_e, l_f, float(val)))
+
     return (t, a)
 
 
@@ -158,7 +164,7 @@ if __name__ == '__main__':
 
     fd = open(sys.argv[1]) if len(sys.argv) >= 2 else sys.stdin
     sentences = [line.strip().split('|||') for line in fd.readlines()]
-    t, a = train(sentences, loop_count=100)
+    t, a = train(sentences, loop_count=10)
 
     es = "私 は 先生 です".split()
     fs = "I am a teacher".split()
