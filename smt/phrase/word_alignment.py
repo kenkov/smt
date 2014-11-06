@@ -40,8 +40,8 @@ def _alignment(elist, flist, e2f, f2e):
     # marge with neighborhood
     while True:
         set_len = len(alignment)
-        for e_word in xrange(1, m+1):
-            for f_word in xrange(1, n+1):
+        for e_word in range(1, m+1):
+            for f_word in range(1, n+1):
                 if (e_word, f_word) in alignment:
                     for (e_diff, f_diff) in neighboring:
                         e_new = e_word + e_diff
@@ -50,23 +50,23 @@ def _alignment(elist, flist, e2f, f2e):
                             if (e_new, f_new) in e2f.union(f2e):
                                 alignment.add((e_new, f_new))
                         else:
-                            if ((e_new not in zip(*alignment)[0]
-                                 or f_new not in zip(*alignment)[1])
-                                and (e_new, f_new) in e2f.union(f2e)):
+                            if ((e_new not in list(zip(*alignment))[0]
+                                    or f_new not in list(zip(*alignment))[1])
+                                    and (e_new, f_new) in e2f.union(f2e)):
                                 alignment.add((e_new, f_new))
         if set_len == len(alignment):
             break
     # finalize
-    for e_word in xrange(1, m+1):
-        for f_word in xrange(1, n+1):
+    for e_word in range(1, m+1):
+        for f_word in range(1, n+1):
             # for alignment = set([])
             if not alignment:
                 if (e_word, f_word) in e2f.union(f2e):
                     alignment.add((e_word, f_word))
             else:
-                if ((e_word not in zip(*alignment)[0]
-                     or f_word not in zip(*alignment)[1])
-                    and (e_word, f_word) in e2f.union(f2e)):
+                if ((e_word not in list(zip(*alignment))[0]
+                        or f_word not in list(zip(*alignment))[1])
+                        and (e_word, f_word) in e2f.union(f2e)):
                     alignment.add((e_word, f_word))
     return alignment
 
@@ -80,7 +80,7 @@ def alignment(es, fs, e2f, f2e):
     e2f: alignment for translation from es to fs
         [(f, e)] or {(f, e)}
     """
-    _e2f = zip(*reversed(zip(*e2f)))
+    _e2f = list(zip(*reversed(list(zip(*e2f)))))
     return _alignment(es, fs, _e2f, f2e)
 
 
@@ -94,7 +94,7 @@ def symmetrization(es, fs, corpus):
     f2e_train = ibmmodel2._train(corpus, loop_count=1000)
     f2e = ibmmodel2.viterbi_alignment(es, fs, *f2e_train).items()
 
-    e2f_corpus = zip(*reversed(zip(*corpus)))
+    e2f_corpus = list(zip(*reversed(list(zip(*corpus)))))
     e2f_train = ibmmodel2._train(e2f_corpus, loop_count=1000)
     e2f = ibmmodel2.viterbi_alignment(fs, es, *e2f_train).items()
 
@@ -110,10 +110,10 @@ if __name__ == '__main__':
     f2e = [(1, 1), (2, 2), (3, 6), (4, 7), (7, 8),
            (8, 8), (9, 9), (5, 10), (6, 10)]
     from smt.utils.utility import matrix
-    print(matrix(len(es), len(fs), e2f))
-    print(matrix(len(es), len(fs), f2e))
+    print(matrix(len(es), len(fs), e2f, es, fs))
+    print(matrix(len(es), len(fs), f2e, es, fs))
     ali = _alignment(es, fs, e2f, f2e)
-    print(matrix(len(es), len(fs), ali))
+    print(matrix(len(es), len(fs), ali, es, fs))
 
     # test for symmetrization
     from smt.utils.utility import mkcorpus
@@ -128,4 +128,4 @@ if __name__ == '__main__':
     fs = "I am a teacher".split()
     syn = symmetrization(es, fs, corpus)
     pprint(syn)
-    print(matrix(len(es), len(fs), syn))
+    print(matrix(len(es), len(fs), syn, es, fs))
