@@ -113,28 +113,34 @@ if __name__ == '__main__':
     from word_alignment import alignment
     from smt.ibmmodel import ibmmodel2
     import sys
+
+    delimiter = ","
+    # load file which will be trained
     modelfd = open(sys.argv[1])
-    sentenses = [line.rstrip().split('|||') for line in modelfd.readlines()]
+    sentenses = [line.rstrip().split(delimiter) for line
+                 in modelfd.readlines()]
     # make corpus
     corpus = mkcorpus(sentenses)
 
+    # train model from corpus
     f2e_train = ibmmodel2._train(corpus, loop_count=10)
     e2f_corpus = list(zip(*reversed(list(zip(*corpus)))))
     e2f_train = ibmmodel2._train(e2f_corpus, loop_count=10)
 
+    # phrase extraction
     for line in sys.stdin:
-        _es, _fs = line.rstrip().split("|||")
+        _es, _fs = line.rstrip().split(delimiter)
         es = _es.split()
         fs = _fs.split()
 
         f2e = ibmmodel2.viterbi_alignment(es, fs, *f2e_train).items()
         e2f = ibmmodel2.viterbi_alignment(fs, es, *e2f_train).items()
-
         align = alignment(es, fs, e2f, f2e)  # symmetrized alignment
 
+        # output matrix
         #from smt.utils.utility import matrix
         #print(matrix(len(es), len(fs), align, es, fs))
 
         ext = phrase_extract(es, fs, align)
         for e, f in ext:
-            print("{}|||{}".format(''.join(e), ''.join(f)))
+            print("{}{}{}".format(''.join(e), delimiter, ''.join(f)))
